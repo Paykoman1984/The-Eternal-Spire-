@@ -4,7 +4,7 @@ import { EQUIPMENT_SLOTS } from '../../constants';
 
 interface MainGameScreenProps {
   player: Player;
-  onReturnToStart: () => void;
+  onExitToProfiles: () => void;
   onEnterSpire: () => void;
   onEnterShop: () => void;
   onEnterAchievements: () => void;
@@ -72,7 +72,7 @@ const EquipmentSlotDisplay: React.FC<{ slot: EquipmentSlot; item: Equipment | un
 };
 
 
-const MainGameScreen: React.FC<MainGameScreenProps> = ({ player, onReturnToStart, onEnterSpire, onEnterShop, onEnterAchievements }) => {
+const MainGameScreen: React.FC<MainGameScreenProps> = ({ player, onExitToProfiles, onEnterSpire, onEnterShop, onEnterAchievements }) => {
   const xpPercentage = (player.xp / player.xpToNextLevel) * 100;
   const hasAccountBuffs = Object.keys(player.accountBuffs).length > 0;
 
@@ -80,11 +80,11 @@ const MainGameScreen: React.FC<MainGameScreenProps> = ({ player, onReturnToStart
     <div className="relative flex flex-col lg:flex-row gap-6 animate-fadeIn h-full">
       
       <button
-        onClick={onReturnToStart}
-        className="absolute top-0 right-0 z-10 px-4 py-1 bg-red-800 text-red-200 text-xs font-semibold rounded-bl-lg rounded-tr-xl hover:bg-red-700 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500"
-        aria-label="Return to start screen for testing"
+        onClick={onExitToProfiles}
+        className="absolute top-0 right-0 z-10 px-4 py-1 bg-slate-700 text-slate-300 text-xs font-semibold rounded-bl-lg rounded-tr-xl hover:bg-slate-600 transition-colors focus:outline-none focus:ring-2 focus:ring-slate-500"
+        aria-label="Exit to profile selection"
       >
-        Return to Start
+        Exit to Profiles
       </button>
 
       {/* Left Panel: Character Info */}

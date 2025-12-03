@@ -1,4 +1,4 @@
-export type GameScreen = 'start' | 'class_selection' | 'main_game' | 'combat' | 'shop' | 'achievements';
+export type GameScreen = 'start' | 'profile_selection' | 'class_selection' | 'main_game' | 'combat' | 'shop' | 'achievements';
 
 export type ClassName = 'Warrior' | 'Rogue' | 'Mage';
 
@@ -45,6 +45,7 @@ export interface Player {
   lastShopRefreshLevel: number;
   achievementProgress: Record<string, number>; // key: achievementId, value: progress
   claimedAchievements: string[]; // array of achievementIds
+  maxFloorReached: number;
 }
 
 export interface Enemy {

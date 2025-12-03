@@ -7,24 +7,19 @@ export function generateEnemy(floor: number): Enemy {
   let baseEnemyData;
 
   if (floor % 10 === 0) {
-    // Mini-boss every 10 floors
     baseEnemyData = BASE_ENEMIES.GOBLIN_CHAMPION;
   } else {
-    // Regular enemy
     baseEnemyData = TIER_1_ENEMIES[Math.floor(Math.random() * TIER_1_ENEMIES.length)];
   }
 
-  // Deep copy to avoid mutating the constant
   const enemy: Enemy = JSON.parse(JSON.stringify({
       ...baseEnemyData,
       stats: {
           ...baseEnemyData.stats,
-          hp: baseEnemyData.stats.maxHp // Start with full HP
+          hp: baseEnemyData.stats.maxHp
       }
   }));
 
-
-  // Scale stats based on floor, with a higher scaling for bosses
   const scaleFactor = 1 + (floor - 1) * 0.1;
   const bossScaleFactor = 1 + (floor / 10 - 1) * 0.25;
 

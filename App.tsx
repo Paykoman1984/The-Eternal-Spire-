@@ -1,13 +1,17 @@
 import React, { useState, useCallback } from 'react';
-import type { GameScreen, Player, PlayerClass, RunState, CombatLog, Equipment, GearSlot, Stats } from './types';
+import type { GameScreen, Player, PlayerClass, RunState, CombatLog, Equipment, GearSlot, Achievement } from './types';
 import { generateEnemy } from './utils/combat';
 import { generateLoot } from './utils/loot';
 import { generateShopInventory } from './utils/shop';
+import { recalculatePlayerStats } from './utils/stats';
+import { ACHIEVEMENTS } from './data/achievements';
 import StartScreen from './components/screens/StartScreen';
 import ClassSelectionScreen from './components/screens/ClassSelectionScreen';
 import MainGameScreen from './components/screens/MainGameScreen';
 import CombatScreen from './components/screens/CombatScreen';
 import ShopScreen from './components/screens/ShopScreen';
+import AchievementsScreen from './components/screens/AchievementsScreen';
+
 
 const App: React.FC = () => {
   const [gameScreen, setGameScreen] = useState<GameScreen>('start');
@@ -38,30 +42,34 @@ const App: React.FC = () => {
     
     if (startingWeapon) {
         startingEquipment.Weapon = startingWeapon;
-        // Apply starting weapon stats to base stats
-        Object.keys(startingWeapon.stats).forEach(stat => {
-            const key = stat as keyof Stats;
-            baseStats[key] += startingWeapon!.stats[key] ?? 0;
-        });
     }
 
-    setPlayer({
+    const initialPlayer: Player = {
       level: 1,
       xp: 0,
       xpToNextLevel: 100,
       classInfo: selectedClass,
-      currentStats: baseStats,
+      baseStats: baseStats,
+      currentStats: { ...baseStats }, // This will be overwritten by recalculate
+      accountBuffs: {},
       currentHp: baseStats.maxHp,
       eternalShards: 0,
       potionCount: 1,
       equipment: startingEquipment,
       shopInventory: [],
       lastShopRefreshLevel: 1,
-    });
+      achievementProgress: {},
+      claimedAchievements: [],
+    };
+    
+    const finalPlayer = recalculatePlayerStats(initialPlayer);
+    finalPlayer.currentHp = finalPlayer.currentStats.maxHp;
+
+    setPlayer(finalPlayer);
     setGameScreen('main_game');
   }, []);
   
-  const handleAccountLevelUp = (currentPlayer: Player): Player => {
+  const handleAccountLevelUp = useCallback((currentPlayer: Player): Player => {
       let updatedPlayer = { ...currentPlayer };
       const levelBeforeUpdate = updatedPlayer.level;
 
@@ -69,22 +77,25 @@ const App: React.FC = () => {
           updatedPlayer.xp -= updatedPlayer.xpToNextLevel;
           updatedPlayer.level += 1;
           updatedPlayer.xpToNextLevel = Math.floor(updatedPlayer.xpToNextLevel * 1.5);
-          updatedPlayer.currentStats.maxHp += 10;
-          updatedPlayer.currentStats.str += 1;
-          updatedPlayer.currentStats.dex += 1;
-          updatedPlayer.currentStats.int += 1;
-          updatedPlayer.currentStats.defense += 1;
-          updatedPlayer.currentHp = updatedPlayer.currentStats.maxHp;
+          // Apply flat gains to BASE stats
+          updatedPlayer.baseStats.maxHp += 10;
+          updatedPlayer.baseStats.str += 1;
+          updatedPlayer.baseStats.dex += 1;
+          updatedPlayer.baseStats.int += 1;
+          updatedPlayer.baseStats.defense += 1;
       }
+
+      // Recalculate stats to apply new level buffs and stat gains
+      updatedPlayer = recalculatePlayerStats(updatedPlayer);
 
       const crossedLevelThreshold = Math.floor(updatedPlayer.level / 5) > Math.floor(levelBeforeUpdate / 5);
       if (crossedLevelThreshold) {
           updatedPlayer.shopInventory = generateShopInventory(updatedPlayer);
           updatedPlayer.lastShopRefreshLevel = updatedPlayer.level;
       }
-
+      
       return updatedPlayer;
-  };
+  }, []);
 
   const endRun = useCallback(() => {
     if (!runState || !player) return;
@@ -100,8 +111,26 @@ const App: React.FC = () => {
     setRunState(null);
     setCombatLogs([]);
     setGameScreen('main_game');
-  }, [runState, player]);
+  }, [runState, player, handleAccountLevelUp]);
 
+  const updateAchievementProgress = useCallback((playerState: Player, runState: RunState, type: 'slay' | 'reach_floor', value: string | number): Player => {
+      const newPlayer = { ...playerState };
+      
+      ACHIEVEMENTS.forEach(ach => {
+          if (ach.type === 'slay' && type === 'slay' && ach.targetId === value) {
+              const currentProgress = newPlayer.achievementProgress[ach.id] || 0;
+              newPlayer.achievementProgress[ach.id] = currentProgress + 1;
+          } else if (ach.type === 'reach_floor' && type === 'reach_floor') {
+              const floor = value as number;
+              const currentProgress = newPlayer.achievementProgress[ach.id] || 0;
+              if (floor > currentProgress) {
+                  newPlayer.achievementProgress[ach.id] = floor;
+              }
+          }
+      });
+
+      return newPlayer;
+  }, []);
 
   const handleEnterSpire = useCallback(() => {
     if (!player) return;
@@ -117,24 +146,31 @@ const App: React.FC = () => {
       pendingLoot: null,
     });
     setCombatLogs([]);
-    addLog(`You enter the Spire. A ${initialEnemy.name} appears!`, 'text-slate-400');
+    addLog(`You enter the Spire. A ${initialEnemy.name} appears!`, 'text-slate-200');
     setGameScreen('combat');
   }, [player]);
 
   const advanceToNextFloor = useCallback(() => {
-    setRunState(prev => {
-        if (!prev) return null;
-        const nextFloor = prev.floor + 1;
+    setRunState(prevRunState => {
+        if (!prevRunState) return null;
+        
+        const nextFloor = prevRunState.floor + 1;
         const nextEnemy = generateEnemy(nextFloor);
-        addLog(`You advance to Floor ${nextFloor}. A ${nextEnemy.name} appears!`, 'text-slate-400');
+        addLog(`You advance to Floor ${nextFloor}. A ${nextEnemy.name} appears!`, 'text-slate-200');
+        
+        setPlayer(prevPlayer => {
+            if (!prevPlayer) return null;
+            return updateAchievementProgress(prevPlayer, prevRunState, 'reach_floor', nextFloor);
+        });
+
         return {
-            ...prev,
+            ...prevRunState,
             floor: nextFloor,
             currentEnemy: nextEnemy,
             pendingLoot: null,
         };
     });
-  }, []);
+  }, [updateAchievementProgress]);
 
   const handleAttack = useCallback(() => {
     if (!player || !runState || runState.pendingLoot) return;
@@ -146,17 +182,20 @@ const App: React.FC = () => {
     let logs: { message: string, color: CombatLog['color'] }[] = [];
     let playerDefeated = false;
   
-    const playerCrit = Math.random() * 100 < player.currentStats.critRate;
-    const playerAttackStat = Math.max(player.currentStats.str, player.currentStats.dex, player.currentStats.int);
+    const playerCrit = Math.random() * 100 < playerAfterUpdate.currentStats.critRate;
+    const playerAttackStat = Math.max(playerAfterUpdate.currentStats.str, playerAfterUpdate.currentStats.dex, playerAfterUpdate.currentStats.int);
     let playerDamage = Math.max(1, playerAttackStat - newRunState.currentEnemy.stats.defense);
     if(playerCrit) playerDamage *= 2;
     playerDamage = Math.floor(playerDamage);
     newRunState.currentEnemy.stats.hp = Math.max(0, newRunState.currentEnemy.stats.hp - playerDamage);
-    logs.push({ message: `You hit the ${newRunState.currentEnemy.name} for ${playerDamage} damage${playerCrit ? ' (CRIT!)' : ''}.`, color: 'text-green-400' });
+    logs.push({ message: `You hit the ${newRunState.currentEnemy.name} for ${playerDamage} damage${playerCrit ? ' (CRIT!)' : ''}.`, color: playerCrit ? 'text-green-400' : 'text-slate-200' });
   
     if (newRunState.currentEnemy.stats.hp <= 0) {
       logs.push({ message: `You have defeated the ${newRunState.currentEnemy.name}!`, color: 'text-yellow-400' });
       
+      // Handle Achievement Progress
+      playerAfterUpdate = updateAchievementProgress(playerAfterUpdate, newRunState, 'slay', newRunState.currentEnemy.id);
+
       const xpGained = newRunState.currentEnemy.xpReward;
       newRunState.runXp += xpGained;
       logs.push({ message: `You gained ${xpGained} XP.`, color: 'text-yellow-400' });
@@ -167,10 +206,12 @@ const App: React.FC = () => {
           newRunState.runLevel += 1;
           newRunState.runXpToNextLevel = Math.floor(newRunState.runXpToNextLevel * 1.8);
           
-          playerAfterUpdate.currentStats.maxHp += 5;
-          playerAfterUpdate.currentStats.str += 1;
-          playerAfterUpdate.currentStats.dex += 1;
-          playerAfterUpdate.currentStats.int += 1;
+          playerAfterUpdate.baseStats.maxHp += 5;
+          playerAfterUpdate.baseStats.str += 1;
+          playerAfterUpdate.baseStats.dex += 1;
+          playerAfterUpdate.baseStats.int += 1;
+
+          playerAfterUpdate = recalculatePlayerStats(playerAfterUpdate);
 
           newRunState.playerCurrentHpInRun = playerAfterUpdate.currentStats.maxHp; 
           logs.push({ message: `You leveled up to Run Level ${newRunState.runLevel}! Your stats permanently increase and HP is restored.`, color: 'text-yellow-400' });
@@ -185,18 +226,18 @@ const App: React.FC = () => {
           const potionsGained = Math.min(loot.potions, 5 - playerAfterUpdate.potionCount);
           if (potionsGained > 0) {
               playerAfterUpdate.potionCount += potionsGained;
-              logs.push({ message: `You found a Health Potion! You now have ${playerAfterUpdate.potionCount}.`, color: 'text-purple-400' });
+              logs.push({ message: `You found a Health Potion! You now have ${playerAfterUpdate.potionCount}.`, color: 'text-yellow-400' });
           }
       }
 
       if (loot.equipment) {
           newRunState.pendingLoot = loot.equipment;
-          logs.push({ message: `The enemy dropped a piece of equipment: ${loot.equipment.name}!`, color: 'text-purple-400' });
+          logs.push({ message: `The enemy dropped a piece of equipment: ${loot.equipment.name}!`, color: 'text-yellow-400' });
       } else {
           setCombatLogs(prev => [...prev, ...logs.map(log => ({...log, id: Date.now() + Math.random() * logs.indexOf(log)}))]);
           setPlayer(playerAfterUpdate);
           setRunState(newRunState);
-          setTimeout(advanceToNextFloor, 1000); // Wait a moment before advancing
+          setTimeout(advanceToNextFloor, 1000);
           return;
       }
       
@@ -205,11 +246,11 @@ const App: React.FC = () => {
       let enemyDamage = Math.max(1, newRunState.currentEnemy.stats.attack - currentDefense);
       enemyDamage = Math.floor(enemyDamage);
       newRunState.playerCurrentHpInRun = Math.max(0, newRunState.playerCurrentHpInRun - enemyDamage);
-      logs.push({ message: `${newRunState.currentEnemy.name} hits you for ${enemyDamage} damage.`, color: 'text-red-400' });
+      logs.push({ message: `${newRunState.currentEnemy.name} hits you for ${enemyDamage} damage.`, color: 'text-slate-200' });
   
       if (newRunState.playerCurrentHpInRun <= 0) {
         playerDefeated = true;
-        logs.push({ message: `You have been defeated...`, color: 'text-red-400' });
+        logs.push({ message: `You have been defeated...`, color: 'text-yellow-400' });
       }
     }
 
@@ -221,7 +262,7 @@ const App: React.FC = () => {
       setTimeout(endRun, 2000);
     }
   
-  }, [player, runState, endRun, advanceToNextFloor]);
+  }, [player, runState, endRun, advanceToNextFloor, updateAchievementProgress]);
 
   const handleLootDecision = useCallback((equip: boolean) => {
     if (!player || !runState || !runState.pendingLoot) return;
@@ -230,36 +271,21 @@ const App: React.FC = () => {
     if (equip) {
         let updatedPlayer = { ...player };
         const slot = lootItem.slot;
-        const oldItem = updatedPlayer.equipment[slot];
-
-        // Remove old item stats
-        if (oldItem) {
-            Object.keys(oldItem.stats).forEach(stat => {
-                const key = stat as keyof typeof oldItem.stats;
-                updatedPlayer.currentStats[key] -= oldItem.stats[key] ?? 0;
-            });
-        }
         
-        // Add new item stats
-        Object.keys(lootItem.stats).forEach(stat => {
-            const key = stat as keyof typeof lootItem.stats;
-            updatedPlayer.currentStats[key] += lootItem.stats[key] ?? 0;
-        });
-
         updatedPlayer.equipment[slot] = lootItem;
         
-        // Adjust HP if maxHp changed
-        if(lootItem.stats.maxHp){
-            updatedPlayer.currentStats.maxHp = Math.max(1, updatedPlayer.currentStats.maxHp);
-            updatedPlayer.currentHp = Math.min(updatedPlayer.currentHp + lootItem.stats.maxHp, updatedPlayer.currentStats.maxHp);
-            runState.playerCurrentHpInRun = Math.min(runState.playerCurrentHpInRun + lootItem.stats.maxHp, updatedPlayer.currentStats.maxHp)
-        }
+        const oldMaxHp = updatedPlayer.currentStats.maxHp;
+        updatedPlayer = recalculatePlayerStats(updatedPlayer);
+        const newMaxHp = updatedPlayer.currentStats.maxHp;
+        
+        const hpDiff = newMaxHp - oldMaxHp;
+        const newRunHp = Math.min(runState.playerCurrentHpInRun + hpDiff, newMaxHp);
 
-
+        setRunState(prev => prev ? {...prev, playerCurrentHpInRun: newRunHp} : null);
         setPlayer(updatedPlayer);
-        addLog(`You equipped ${lootItem.name}.`, 'text-purple-400');
+        addLog(`You equipped ${lootItem.name}.`, 'text-slate-200');
     } else {
-        addLog(`You discarded ${lootItem.name}.`, 'text-slate-400');
+        addLog(`You discarded ${lootItem.name}.`, 'text-slate-200');
     }
 
     advanceToNextFloor();
@@ -279,17 +305,17 @@ const App: React.FC = () => {
     const oldHp = newRunState.playerCurrentHpInRun;
     newRunState.playerCurrentHpInRun = Math.min(player.currentStats.maxHp, newRunState.playerCurrentHpInRun + healAmount);
     const actualHeal = newRunState.playerCurrentHpInRun - oldHp;
-    logs.push({ message: `You used a Health Potion and restored ${actualHeal} HP.`, color: 'text-green-400' });
+    logs.push({ message: `You used a Health Potion and restored ${actualHeal} HP.`, color: 'text-slate-200' });
 
     if (newRunState.currentEnemy.stats.hp > 0) {
         let enemyDamage = Math.max(1, newRunState.currentEnemy.stats.attack - player.currentStats.defense);
         enemyDamage = Math.floor(enemyDamage);
         newRunState.playerCurrentHpInRun = Math.max(0, newRunState.playerCurrentHpInRun - enemyDamage);
-        logs.push({ message: `${newRunState.currentEnemy.name} hits you for ${enemyDamage} damage.`, color: 'text-red-400' });
+        logs.push({ message: `${newRunState.currentEnemy.name} hits you for ${enemyDamage} damage.`, color: 'text-slate-200' });
     
         if (newRunState.playerCurrentHpInRun <= 0) {
           playerDefeated = true;
-          logs.push({ message: `You have been defeated...`, color: 'text-red-400' });
+          logs.push({ message: `You have been defeated...`, color: 'text-yellow-400' });
         }
     }
 
@@ -311,6 +337,14 @@ const App: React.FC = () => {
 
   const handleEnterShop = useCallback(() => {
     setGameScreen('shop');
+  }, []);
+
+  const handleEnterAchievements = useCallback(() => {
+    setGameScreen('achievements');
+  }, []);
+  
+  const handleExitAchievements = useCallback(() => {
+    setGameScreen('main_game');
   }, []);
   
   const handleExitShop = useCallback(() => {
@@ -339,33 +373,37 @@ const App: React.FC = () => {
     let updatedPlayer = { ...player };
 
     updatedPlayer.eternalShards -= itemToBuy.cost;
-
     const slot = itemToBuy.slot;
-    const oldItem = updatedPlayer.equipment[slot];
-    if (oldItem) {
-        Object.keys(oldItem.stats).forEach(stat => {
-            const key = stat as keyof typeof oldItem.stats;
-            updatedPlayer.currentStats[key] -= oldItem.stats[key] ?? 0;
-        });
-    }
-    Object.keys(itemToBuy.stats).forEach(stat => {
-        const key = stat as keyof typeof itemToBuy.stats;
-        updatedPlayer.currentStats[key] += itemToBuy.stats[key] ?? 0;
-    });
-    updatedPlayer.equipment[slot] = { ...itemToBuy }; // Create a copy
-
-    if(itemToBuy.stats.maxHp || oldItem?.stats.maxHp){
-        const maxHpChange = (itemToBuy.stats.maxHp ?? 0) - (oldItem?.stats.maxHp ?? 0);
-        updatedPlayer.currentStats.maxHp = Math.max(1, updatedPlayer.currentStats.maxHp);
-        updatedPlayer.currentHp = Math.min(updatedPlayer.currentHp + maxHpChange, updatedPlayer.currentStats.maxHp);
-         if (updatedPlayer.currentHp <= 0) updatedPlayer.currentHp = 1;
-    }
-    
+    updatedPlayer.equipment[slot] = { ...itemToBuy };
     updatedPlayer.shopInventory = updatedPlayer.shopInventory.filter(item => item.name !== itemToBuy.name);
+    
+    const hpBefore = updatedPlayer.currentHp;
+    const maxHpBefore = updatedPlayer.currentStats.maxHp;
+    updatedPlayer = recalculatePlayerStats(updatedPlayer);
+    
+    const maxHpAfter = updatedPlayer.currentStats.maxHp;
+    if (maxHpAfter !== maxHpBefore) {
+        const hpPercentage = hpBefore / maxHpBefore;
+        updatedPlayer.currentHp = Math.round(maxHpAfter * hpPercentage);
+    }
+    updatedPlayer.currentHp = Math.min(updatedPlayer.currentHp, updatedPlayer.currentStats.maxHp);
+    if (updatedPlayer.currentHp <= 0) updatedPlayer.currentHp = 1;
 
     setPlayer(updatedPlayer);
+  }, [player]);
 
-}, [player]);
+  const handleClaimAchievement = useCallback((achievementId: string) => {
+    if (!player) return;
+    const achievement = ACHIEVEMENTS.find(ach => ach.id === achievementId);
+    if (!achievement || player.claimedAchievements.includes(achievementId) || achievement.isBuff) return;
+
+    let updatedPlayer = { ...player };
+    updatedPlayer.eternalShards += achievement.rewards.shards || 0;
+    updatedPlayer.potionCount = Math.min(5, updatedPlayer.potionCount + (achievement.rewards.potions || 0));
+    updatedPlayer.claimedAchievements = [...updatedPlayer.claimedAchievements, achievementId];
+
+    setPlayer(updatedPlayer);
+  }, [player]);
 
   const renderScreen = () => {
     switch (gameScreen) {
@@ -380,6 +418,7 @@ const App: React.FC = () => {
             onReturnToStart={handleReturnToStart} 
             onEnterSpire={handleEnterSpire}
             onEnterShop={handleEnterShop}
+            onEnterAchievements={handleEnterAchievements}
           />;
         }
         break;
@@ -403,6 +442,16 @@ const App: React.FC = () => {
             onExit={handleExitShop}
             onBuyPotion={handleBuyPotion}
             onBuyShopItem={handleBuyShopItem}
+          />;
+        }
+        break;
+      case 'achievements':
+        if (player) {
+          return <AchievementsScreen
+            player={player}
+            achievements={ACHIEVEMENTS}
+            onExit={handleExitAchievements}
+            onClaim={handleClaimAchievement}
           />;
         }
         break;

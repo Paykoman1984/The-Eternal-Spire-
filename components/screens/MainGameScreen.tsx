@@ -7,12 +7,13 @@ interface MainGameScreenProps {
   onReturnToStart: () => void;
   onEnterSpire: () => void;
   onEnterShop: () => void;
+  onEnterAchievements: () => void;
 }
 
 const StatBox: React.FC<{ label: string; value: string | number }> = ({ label, value }) => (
-    <div className="bg-slate-900/70 p-2 rounded-lg text-center border border-slate-700">
-        <p className="text-xs font-bold text-slate-400 uppercase">{label}</p>
-        <p className="text-lg font-bold text-slate-200 mt-1">{value}</p>
+    <div className="bg-slate-900/70 p-1 rounded-md text-center border border-slate-700">
+        <p className="text-[10px] font-bold text-slate-400 uppercase">{label}</p>
+        <p className="text-base font-bold text-slate-200">{value}</p>
     </div>
 );
 
@@ -71,9 +72,9 @@ const EquipmentSlotDisplay: React.FC<{ slot: EquipmentSlot; item: Equipment | un
 };
 
 
-const MainGameScreen: React.FC<MainGameScreenProps> = ({ player, onReturnToStart, onEnterSpire, onEnterShop }) => {
+const MainGameScreen: React.FC<MainGameScreenProps> = ({ player, onReturnToStart, onEnterSpire, onEnterShop, onEnterAchievements }) => {
   const xpPercentage = (player.xp / player.xpToNextLevel) * 100;
-  const hpPercentage = (player.currentHp / player.currentStats.maxHp) * 100;
+  const hasAccountBuffs = Object.keys(player.accountBuffs).length > 0;
 
   return (
     <div className="relative flex flex-col lg:flex-row gap-6 animate-fadeIn h-full">
@@ -114,25 +115,32 @@ const MainGameScreen: React.FC<MainGameScreenProps> = ({ player, onReturnToStart
             </div>
         </div>
         
-        <div className="mb-4">
-            <div className="flex justify-between items-center text-xs text-slate-400 mb-1">
-                <span>HP</span>
-                <span>{player.currentHp} / {player.currentStats.maxHp}</span>
+        <div className="mt-auto space-y-4">
+            {/* Account Bonuses Section */}
+            <div>
+                <h4 className="text-sm font-bold text-slate-400 border-b border-slate-700 pb-1 mb-2">Account Bonuses</h4>
+                {hasAccountBuffs ? (
+                    <div className="grid grid-cols-3 gap-1 text-xs">
+                        {Object.entries(player.accountBuffs).map(([stat, value]) => (
+                            <div key={stat} className="text-center bg-slate-900/50 p-1 rounded">
+                               <p className="font-semibold text-green-400">+{value}%</p>
+                               <p className="text-slate-400">{stat.toUpperCase()}</p>
+                            </div>
+                        ))}
+                    </div>
+                ) : (
+                    <p className="text-xs text-slate-500 text-center italic py-2">Reach level milestones for permanent buffs.</p>
+                )}
             </div>
-            <div className="w-full bg-slate-900 rounded-full h-4 border-2 border-slate-700">
-                <div 
-                    className="bg-red-600 h-full rounded-full transition-all duration-500" 
-                    style={{ width: `${hpPercentage}%` }}
-                ></div>
-            </div>
-        </div>
 
-        <div className="grid grid-cols-5 gap-2 mt-auto pt-4">
-            <StatBox label="STR" value={player.currentStats.str} />
-            <StatBox label="DEX" value={player.currentStats.dex} />
-            <StatBox label="INT" value={player.currentStats.int} />
-            <StatBox label="DEF" value={player.currentStats.defense} />
-            <StatBox label="CRIT" value={`${player.currentStats.critRate}%`} />
+            <div className="grid grid-cols-3 gap-1 pt-2 border-t border-slate-700">
+                <StatBox label="HP" value={player.currentStats.maxHp} />
+                <StatBox label="STR" value={player.currentStats.str} />
+                <StatBox label="DEX" value={player.currentStats.dex} />
+                <StatBox label="INT" value={player.currentStats.int} />
+                <StatBox label="DEF" value={player.currentStats.defense} />
+                <StatBox label="CRIT" value={`${player.currentStats.critRate}%`} />
+            </div>
         </div>
       </div>
 
@@ -151,16 +159,22 @@ const MainGameScreen: React.FC<MainGameScreenProps> = ({ player, onReturnToStart
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+        <div className="grid grid-cols-3 gap-4 mt-4">
           <button
             onClick={onEnterShop}
-            className="w-full px-6 py-3 bg-purple-700 text-white font-bold text-base rounded-lg shadow-lg shadow-purple-500/20 hover:bg-purple-600 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-purple-500"
+            className="w-full px-6 py-3 bg-purple-700 text-white font-bold text-sm rounded-lg shadow-lg shadow-purple-500/20 hover:bg-purple-600 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-purple-500 flex items-center justify-center"
           >
             Shop
           </button>
+           <button
+            onClick={onEnterAchievements}
+            className="w-full px-6 py-3 bg-cyan-700 text-white font-bold text-sm rounded-lg shadow-lg shadow-cyan-500/20 hover:bg-cyan-600 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-cyan-500 flex items-center justify-center"
+          >
+            Achievements
+          </button>
           <button
             onClick={onEnterSpire}
-            className="w-full px-6 py-3 bg-yellow-500 text-slate-900 font-bold text-base rounded-lg shadow-lg shadow-yellow-500/20 hover:bg-yellow-400 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-yellow-300"
+            className="w-full px-6 py-3 bg-yellow-500 text-slate-900 font-bold text-sm rounded-lg shadow-lg shadow-yellow-500/20 hover:bg-yellow-400 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-yellow-300 flex items-center justify-center"
           >
             Enter Spire
           </button>

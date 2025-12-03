@@ -9,6 +9,7 @@ interface MainGameScreenProps {
   onEnterSpire: () => void;
   onEnterShop: () => void;
   onEnterAchievements: () => void;
+  onEnterStats: () => void;
 }
 
 const StatBox: React.FC<{ label: string; value: string | number }> = ({ label, value }) => (
@@ -73,7 +74,7 @@ const EquipmentSlotDisplay: React.FC<{ slot: EquipmentSlot; item: Equipment | un
 };
 
 
-const MainGameScreen: React.FC<MainGameScreenProps> = ({ player, onExitToProfiles, onEnterSpire, onEnterShop, onEnterAchievements }) => {
+const MainGameScreen: React.FC<MainGameScreenProps> = ({ player, onExitToProfiles, onEnterSpire, onEnterShop, onEnterAchievements, onEnterStats }) => {
   const xpPercentage = (player.xp / player.xpToNextLevel) * 100;
   const hasAccountBuffs = Object.keys(player.accountBuffs).length > 0;
 
@@ -160,22 +161,28 @@ const MainGameScreen: React.FC<MainGameScreenProps> = ({ player, onExitToProfile
           </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-3 mt-3">
+        <div className="grid grid-cols-4 gap-3 mt-3">
           <button
             onClick={onEnterShop}
-            className="w-full px-4 py-2 bg-purple-700 text-white font-bold text-xs rounded-lg shadow-lg shadow-purple-500/20 hover:bg-purple-600 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-purple-500 flex items-center justify-center"
+            className="flex flex-col items-center justify-center w-full px-2 py-2 bg-purple-700 text-white font-bold text-xs rounded-lg shadow-lg shadow-purple-500/20 hover:bg-purple-600 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-purple-500"
           >
             Shop
           </button>
            <button
             onClick={onEnterAchievements}
-            className="w-full px-4 py-2 bg-cyan-700 text-white font-bold text-xs rounded-lg shadow-lg shadow-cyan-500/20 hover:bg-cyan-600 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-cyan-500 flex items-center justify-center"
+             className="flex flex-col items-center justify-center w-full px-2 py-2 bg-cyan-700 text-white font-bold text-xs rounded-lg shadow-lg shadow-cyan-500/20 hover:bg-cyan-600 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-cyan-500"
           >
-            Achievements
+            Achieve
+          </button>
+          <button
+            onClick={onEnterStats}
+             className="flex flex-col items-center justify-center w-full px-2 py-2 bg-slate-600 text-white font-bold text-xs rounded-lg shadow-lg shadow-slate-500/20 hover:bg-slate-500 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-slate-500"
+          >
+            All Time Stats
           </button>
           <button
             onClick={onEnterSpire}
-            className="w-full px-4 py-2 bg-[#D6721C] text-slate-900 font-bold text-xs rounded-lg shadow-lg shadow-[#D6721C]/20 hover:bg-[#E1883D] transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-[#D6721C] flex items-center justify-center"
+             className="flex flex-col items-center justify-center w-full px-2 py-2 bg-[#D6721C] text-slate-900 font-bold text-xs rounded-lg shadow-lg shadow-[#D6721C]/20 hover:bg-[#E1883D] transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-[#D6721C]"
           >
             Enter Spire
           </button>

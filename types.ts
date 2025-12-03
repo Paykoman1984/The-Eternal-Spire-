@@ -1,5 +1,5 @@
 
-export type GameScreen = 'start' | 'profile_selection' | 'class_selection' | 'main_game' | 'combat' | 'shop' | 'achievements' | 'run_summary';
+export type GameScreen = 'start' | 'profile_selection' | 'class_selection' | 'main_game' | 'combat' | 'shop' | 'achievements' | 'run_summary' | 'stats';
 
 export type ClassName = 'Warrior' | 'Rogue' | 'Mage';
 
@@ -48,6 +48,13 @@ export interface Player {
   achievementProgress: Record<string, number>; // key: achievementId, value: progress
   claimedAchievements: string[]; // array of achievementIds
   maxFloorReached: number;
+  
+  // Lifetime Stats
+  totalEnemiesKilled: number;
+  totalDeaths: number;
+  totalAccumulatedXp: number;
+  totalLifetimeShards: number;
+  totalFlees: number;
 }
 
 export interface Enemy {

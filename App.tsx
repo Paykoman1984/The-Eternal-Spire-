@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback, useEffect } from 'react';
 import type { GameScreen, Player, PlayerClass, RunState, CombatLog, Equipment, GearSlot, Achievement } from './types';
 import { generateEnemy } from './utils/combat';
@@ -13,6 +14,7 @@ import ShopScreen from './components/screens/ShopScreen';
 import AchievementsScreen from './components/screens/AchievementsScreen';
 import ProfileScreen from './components/screens/ProfileScreen';
 import RunSummaryScreen from './components/screens/RunSummaryScreen';
+import StatsScreen from './components/screens/StatsScreen';
 
 const PROFILES_STORAGE_KEY = 'eternal_spire_profiles';
 
@@ -127,6 +129,12 @@ const App: React.FC = () => {
       achievementProgress: {},
       claimedAchievements: [],
       maxFloorReached: 0,
+      // Initialize lifetime stats
+      totalEnemiesKilled: 0,
+      totalDeaths: 0,
+      totalAccumulatedXp: 0,
+      totalLifetimeShards: 0,
+      totalFlees: 0,
     };
     
     const finalPlayer = recalculatePlayerStats(initialPlayer);
@@ -173,6 +181,7 @@ const App: React.FC = () => {
 
     updateCurrentPlayer(player => {
         let updatedPlayer = { ...player, xp: player.xp + runState.runXp };
+        updatedPlayer.totalAccumulatedXp = (updatedPlayer.totalAccumulatedXp || 0) + runState.runXp;
         updatedPlayer = handleAccountLevelUp(updatedPlayer);
         updatedPlayer.currentHp = updatedPlayer.currentStats.maxHp;
         return updatedPlayer;
@@ -293,10 +302,15 @@ const App: React.FC = () => {
       updateCurrentPlayer(player => {
           let playerAfterUpdate = { ...player };
           
+          playerAfterUpdate.totalEnemiesKilled = (playerAfterUpdate.totalEnemiesKilled || 0) + 1;
           playerAfterUpdate = updateAchievementProgress(playerAfterUpdate, newRunState, 'slay', newRunState.currentEnemy.id);
 
           const xpGained = newRunState.currentEnemy.xpReward;
           newRunState.runXp += xpGained;
+          // Note: totalAccumulatedXp is updated when run ends to avoid double counting if run crashes, 
+          // OR we can update it here. Let's update it at End Run Summary to keep it cleaner.
+          // Correction: The user wants "total xp gained". It's better to update it at end run.
+
           logs.push({ message: `You gained ${xpGained} XP.`, color: 'text-[#D6721C]' });
 
           if (newRunState.runXp >= newRunState.runXpToNextLevel) {
@@ -318,6 +332,7 @@ const App: React.FC = () => {
 
           if (loot.shards > 0) {
               playerAfterUpdate.eternalShards += loot.shards;
+              playerAfterUpdate.totalLifetimeShards = (playerAfterUpdate.totalLifetimeShards || 0) + loot.shards;
               newRunState.shardsEarned += loot.shards;
               logs.push({ message: `The enemy dropped ${loot.shards} Eternal Shards.`, color: 'text-purple-400' });
           }
@@ -351,6 +366,7 @@ const App: React.FC = () => {
   
       if (newRunState.playerCurrentHpInRun <= 0) {
         playerDefeated = true;
+        updateCurrentPlayer(player => ({ ...player, totalDeaths: (player.totalDeaths || 0) + 1 }));
         logs.push({ message: `You have been defeated...`, color: 'text-[#D6721C]' });
       }
     }
@@ -421,6 +437,7 @@ const App: React.FC = () => {
     
       if (newRunState.playerCurrentHpInRun <= 0) {
         playerDefeated = true;
+        updateCurrentPlayer(player => ({ ...player, totalDeaths: (player.totalDeaths || 0) + 1 }));
         logs.push({ message: `You have been defeated...`, color: 'text-[#D6721C]' });
       }
     }
@@ -433,6 +450,11 @@ const App: React.FC = () => {
     }
   }, [activeProfileIndex, profiles, runState, updateCurrentPlayer]);
   
+  const handleFlee = useCallback(() => {
+    updateCurrentPlayer(player => ({ ...player, totalFlees: (player.totalFlees || 0) + 1 }));
+    setGameScreen('run_summary');
+  }, [updateCurrentPlayer]);
+
   const handleExitToProfiles = useCallback(() => {
     setActiveProfileIndex(null);
     setRunState(null);
@@ -442,8 +464,8 @@ const App: React.FC = () => {
 
   const handleEnterShop = useCallback(() => setGameScreen('shop'), []);
   const handleEnterAchievements = useCallback(() => setGameScreen('achievements'), []);
-  const handleExitAchievements = useCallback(() => setGameScreen('main_game'), []);
-  const handleExitShop = useCallback(() => setGameScreen('main_game'), []);
+  const handleEnterStats = useCallback(() => setGameScreen('stats'), []);
+  const handleExitSubScreen = useCallback(() => setGameScreen('main_game'), []);
 
   const handleBuyPotion = useCallback(() => {
     updateCurrentPlayer(player => {
@@ -490,6 +512,7 @@ const App: React.FC = () => {
       if (!achievement || player.claimedAchievements.includes(achievementId) || achievement.isBuff) return player;
       let updatedPlayer = { ...player };
       updatedPlayer.eternalShards += achievement.rewards.shards || 0;
+      updatedPlayer.totalLifetimeShards = (updatedPlayer.totalLifetimeShards || 0) + (achievement.rewards.shards || 0);
       updatedPlayer.potionCount = Math.min(5, updatedPlayer.potionCount + (achievement.rewards.potions || 0));
       updatedPlayer.claimedAchievements = [...updatedPlayer.claimedAchievements, achievementId];
       return updatedPlayer;
@@ -519,6 +542,7 @@ const App: React.FC = () => {
             onEnterSpire={handleEnterSpire}
             onEnterShop={handleEnterShop}
             onEnterAchievements={handleEnterAchievements}
+            onEnterStats={handleEnterStats}
           />;
         }
         break;
@@ -529,7 +553,7 @@ const App: React.FC = () => {
             runState={runState} 
             logs={combatLogs} 
             onAttack={handleAttack} 
-            onFlee={() => setGameScreen('run_summary')} 
+            onFlee={handleFlee} 
             onLootDecision={handleLootDecision}
             onUsePotion={handleUsePotion}
           />;
@@ -539,7 +563,7 @@ const App: React.FC = () => {
         if (activePlayer) {
           return <ShopScreen
             player={activePlayer}
-            onExit={handleExitShop}
+            onExit={handleExitSubScreen}
             onBuyPotion={handleBuyPotion}
             onBuyShopItem={handleBuyShopItem}
           />;
@@ -550,11 +574,19 @@ const App: React.FC = () => {
           return <AchievementsScreen
             player={activePlayer}
             achievements={ACHIEVEMENTS}
-            onExit={handleExitAchievements}
+            onExit={handleExitSubScreen}
             onClaim={handleClaimAchievement}
           />;
         }
         break;
+      case 'stats':
+          if (activePlayer) {
+              return <StatsScreen
+                player={activePlayer}
+                onExit={handleExitSubScreen}
+              />;
+          }
+          break;
       case 'run_summary':
         if (runState) {
           return <RunSummaryScreen

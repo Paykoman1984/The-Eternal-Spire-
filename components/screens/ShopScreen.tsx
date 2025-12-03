@@ -29,7 +29,7 @@ const ShopScreen: React.FC<ShopScreenProps> = ({ player, onExit, onBuyPotion, on
     return (
         <div className="bg-slate-800 border border-slate-700 rounded-xl p-4 shadow-lg animate-fadeIn w-full max-w-2xl mx-auto">
             <div className="flex justify-between items-center border-b-2 border-slate-700 pb-2 mb-3">
-                <h2 className="text-xl font-bold text-yellow-400">Shop</h2>
+                <h2 className="text-xl font-bold text-[#D6721C]">Shop</h2>
                 <div className="flex items-center text-base">
                     <span className="text-purple-400 mr-2">💎</span>
                     <span className="font-bold text-slate-200">{player.eternalShards}</span>
@@ -59,13 +59,13 @@ const ShopScreen: React.FC<ShopScreenProps> = ({ player, onExit, onBuyPotion, on
                 {/* Equipment Items */}
                 {player.shopInventory.length > 0 && (
                     <div className="border-t-2 border-slate-700 pt-3 mt-3">
-                        <h3 className="text-base font-bold text-slate-300 mb-2">Fresh Stock! (Resets every 5 levels)</h3>
+                        <h3 className="text-base font-bold text-[#D6721C] mb-2">Fresh Stock! (Resets every 5 levels)</h3>
                         {player.shopInventory.map((item, index) => (
                             <div key={index} className="bg-slate-900/70 border border-slate-700 rounded-lg p-2 flex items-center justify-between mb-2">
                                 <div className="flex items-center overflow-hidden">
                                     <span className="text-2xl mr-3">{item.icon}</span>
                                     <div className="flex-1 min-w-0">
-                                        <p className="text-sm font-bold text-yellow-400 truncate">{item.name}</p>
+                                        <p className="text-sm font-bold text-[#D6721C] truncate">{item.name}</p>
                                         <div className="flex flex-wrap gap-x-2 text-xs text-slate-400">
                                             {Object.entries(item.stats).map(([stat, value]) => (
                                                 <span key={stat}>{stat.toUpperCase()}: <span className="text-green-400">+{value}</span></span>

@@ -1,3 +1,4 @@
+
 import React from 'react';
 import type { Player, Achievement } from '../../types';
 
@@ -44,7 +45,7 @@ const AchievementCard: React.FC<{
             <button
                 onClick={() => onClaim(achievement.id)}
                 disabled={!isComplete}
-                className="px-3 py-1.5 text-xs bg-yellow-500 text-slate-900 font-bold rounded-lg shadow-md hover:bg-yellow-400 transition-all duration-300 focus:outline-none focus:ring-4 focus:ring-yellow-300 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed"
+                className="px-3 py-1.5 text-xs bg-[#D6721C] text-slate-900 font-bold rounded-lg shadow-md hover:bg-[#E1883D] transition-all duration-300 focus:outline-none focus:ring-4 focus:ring-[#D6721C] disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed"
             >
                 Claim
             </button>
@@ -54,13 +55,13 @@ const AchievementCard: React.FC<{
     return (
         <div className="bg-slate-900/70 border border-slate-700 rounded-lg p-3 flex flex-col">
             <div>
-                <h4 className="font-bold text-base text-yellow-400">{achievement.title}</h4>
+                <h4 className="font-bold text-base text-[#D6721C]">{achievement.title}</h4>
                 <p className="text-xs text-slate-400 mt-1 mb-3">{achievement.description}</p>
             </div>
             <div className="mt-auto">
                 <div className="w-full bg-slate-900 rounded-full h-2.5 mb-2 border border-slate-600">
                     <div 
-                        className="bg-yellow-400 h-full rounded-full transition-all duration-500" 
+                        className="bg-[#D6721C] h-full rounded-full transition-all duration-500" 
                         style={{ width: `${progressPercentage}%` }}
                     ></div>
                 </div>
@@ -88,7 +89,7 @@ const AchievementsScreen: React.FC<AchievementsScreenProps> = ({ player, achieve
     return (
         <div className="bg-slate-800 border border-slate-700 rounded-xl p-4 shadow-lg animate-fadeIn w-full max-w-3xl mx-auto">
             <div className="flex justify-between items-center border-b-2 border-slate-700 pb-2 mb-3">
-                <h2 className="text-2xl font-bold text-yellow-400">Achievements</h2>
+                <h2 className="text-2xl font-bold text-[#D6721C]">Achievements</h2>
                 <div className="flex items-center text-base">
                     <span className="text-purple-400 mr-2">💎</span>
                     <span className="font-bold text-slate-200">{player.eternalShards}</span>
@@ -97,13 +98,13 @@ const AchievementsScreen: React.FC<AchievementsScreenProps> = ({ player, achieve
 
             <div className="space-y-4 mt-4 max-h-[65vh] overflow-y-auto pr-2">
                 <div>
-                    <h3 className="text-lg font-bold text-slate-300 mb-2">Permanent Buffs</h3>
+                    <h3 className="text-lg font-bold text-[#D6721C] mb-2">Permanent Buffs</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         {buffAchievements.map(ach => <AchievementCard key={ach.id} player={player} achievement={ach} onClaim={onClaim} />)}
                     </div>
                 </div>
                  <div>
-                    <h3 className="text-lg font-bold text-slate-300 mb-2">Quests</h3>
+                    <h3 className="text-lg font-bold text-[#D6721C] mb-2">Quests</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         {questAchievements.map(ach => <AchievementCard key={ach.id} player={player} achievement={ach} onClaim={onClaim} />)}
                     </div>

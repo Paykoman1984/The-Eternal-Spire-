@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { CLASSES } from '../../constants';
 import type { PlayerClass, Stats } from '../../types';
@@ -24,16 +25,16 @@ const StatDisplay: React.FC<{ stats: Stats }> = ({ stats }) => (
 );
 
 const ClassCard: React.FC<{ playerClass: PlayerClass; onSelect: () => void }> = ({ playerClass, onSelect }) => (
-  <div className="bg-slate-800 border-2 border-slate-700 rounded-xl p-4 flex flex-col text-center transform hover:scale-105 hover:border-yellow-400 transition-all duration-300 shadow-lg h-full">
+  <div className="bg-slate-800 border-2 border-slate-700 rounded-xl p-4 flex flex-col text-center transform hover:scale-105 hover:border-[#D6721C] transition-all duration-300 shadow-lg h-full">
     <div className="flex items-center justify-center mb-3">
       <span className="text-4xl mr-2">{playerClass.icon}</span>
-      <h3 className="text-lg font-bold text-yellow-400">{playerClass.name}</h3>
+      <h3 className="text-lg font-bold text-[#D6721C]">{playerClass.name}</h3>
     </div>
     <p className="text-xs text-slate-400 mb-4 flex-grow">{playerClass.description}</p>
     <StatDisplay stats={playerClass.baseStats} />
     <button
       onClick={onSelect}
-      className="mt-4 w-full px-4 py-2 bg-slate-700 text-yellow-400 font-semibold text-sm rounded-lg hover:bg-yellow-500 hover:text-slate-900 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-yellow-400"
+      className="mt-4 w-full px-4 py-2 bg-slate-700 text-[#D6721C] font-semibold text-sm rounded-lg hover:bg-[#D6721C] hover:text-slate-900 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-[#D6721C]"
     >
       Choose
     </button>
@@ -43,7 +44,7 @@ const ClassCard: React.FC<{ playerClass: PlayerClass; onSelect: () => void }> = 
 const ClassSelectionScreen: React.FC<ClassSelectionScreenProps> = ({ onClassSelect }) => {
   return (
     <div className="animate-fadeIn">
-      <h2 className="text-xl md:text-2xl font-bold text-center mb-6 text-slate-300">Choose Your Path</h2>
+      <h2 className="text-xl md:text-2xl font-bold text-center mb-6 text-[#D6721C]">Choose Your Path</h2>
       <div className="grid grid-cols-2 gap-4">
         {CLASSES.map((playerClass) => (
           <ClassCard key={playerClass.name} playerClass={playerClass} onSelect={() => onClassSelect(playerClass)} />

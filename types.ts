@@ -1,4 +1,5 @@
-export type GameScreen = 'start' | 'profile_selection' | 'class_selection' | 'main_game' | 'combat' | 'shop' | 'achievements';
+
+export type GameScreen = 'start' | 'profile_selection' | 'class_selection' | 'main_game' | 'combat' | 'shop' | 'achievements' | 'run_summary';
 
 export type ClassName = 'Warrior' | 'Rogue' | 'Mage';
 
@@ -69,12 +70,14 @@ export interface RunState {
   playerCurrentHpInRun: number;
   currentEnemy: Enemy;
   pendingLoot: Equipment | null;
+  enemiesKilled: number;
+  shardsEarned: number;
 }
 
 export interface CombatLog {
     id: number;
     message: string;
-    color: 'text-green-400' | 'text-yellow-400' | 'text-slate-200' | 'text-purple-400' | 'text-red-400';
+    color: 'text-green-400' | 'text-[#D6721C]' | 'text-slate-200' | 'text-purple-400' | 'text-red-400';
 }
 
 // --- Achievements ---

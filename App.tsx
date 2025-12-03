@@ -12,6 +12,7 @@ import CombatScreen from './components/screens/CombatScreen';
 import ShopScreen from './components/screens/ShopScreen';
 import AchievementsScreen from './components/screens/AchievementsScreen';
 import ProfileScreen from './components/screens/ProfileScreen';
+import RunSummaryScreen from './components/screens/RunSummaryScreen';
 
 const PROFILES_STORAGE_KEY = 'eternal_spire_profiles';
 
@@ -39,7 +40,6 @@ const App: React.FC = () => {
   const [combatLogs, setCombatLogs] = useState<CombatLog[]>([]);
 
   // Effect to automatically save profiles to localStorage whenever they change.
-  // This is more robust than manual saving and fixes the delete bug.
   useEffect(() => {
       try {
           localStorage.setItem(PROFILES_STORAGE_KEY, JSON.stringify(profiles));
@@ -83,6 +83,7 @@ const App: React.FC = () => {
   }, []);
 
   const handleDeleteProfile = useCallback((index: number) => {
+    // No window.confirm here, relying on UI confirmation
     setProfiles(currentProfiles => {
       const newProfiles = [...currentProfiles];
       newProfiles[index] = null;
@@ -166,7 +167,8 @@ const App: React.FC = () => {
       return updatedPlayer;
   }, []);
 
-  const endRun = useCallback(() => {
+  // Actual logic to apply rewards and clear state
+  const handleCloseSummary = useCallback(() => {
     if (!runState || activeProfileIndex === null) return;
 
     updateCurrentPlayer(player => {
@@ -213,6 +215,8 @@ const App: React.FC = () => {
       playerCurrentHpInRun: activePlayer.currentStats.maxHp,
       currentEnemy: initialEnemy,
       pendingLoot: null,
+      enemiesKilled: 0,
+      shardsEarned: 0,
     });
     setCombatLogs([]);
     addLog(`You enter the Spire. A ${initialEnemy.name} appears!`, 'text-slate-200');
@@ -235,7 +239,7 @@ const App: React.FC = () => {
         });
 
         const nextEnemy = generateEnemy(nextFloor);
-        addLog(`You advance to Floor ${nextFloor}. A ${nextEnemy.name} appears!`, 'text-yellow-400');
+        addLog(`You advance to Floor ${nextFloor}. A ${nextEnemy.name} appears!`, 'text-[#D6721C]');
 
         return {
             ...prevRunState,
@@ -265,7 +269,8 @@ const App: React.FC = () => {
   
     let finalRunState = newRunState;
     if (newRunState.currentEnemy.stats.hp <= 0) {
-      logs.push({ message: `You have defeated the ${newRunState.currentEnemy.name}!`, color: 'text-yellow-400' });
+      logs.push({ message: `You have defeated the ${newRunState.currentEnemy.name}!`, color: 'text-[#D6721C]' });
+      newRunState.enemiesKilled += 1;
       
       updateCurrentPlayer(player => {
           let playerAfterUpdate = { ...player };
@@ -274,7 +279,7 @@ const App: React.FC = () => {
 
           const xpGained = newRunState.currentEnemy.xpReward;
           newRunState.runXp += xpGained;
-          logs.push({ message: `You gained ${xpGained} XP.`, color: 'text-yellow-400' });
+          logs.push({ message: `You gained ${xpGained} XP.`, color: 'text-[#D6721C]' });
 
           if (newRunState.runXp >= newRunState.runXpToNextLevel) {
               didPlayerLevelUpInRun = true;
@@ -290,25 +295,26 @@ const App: React.FC = () => {
               playerAfterUpdate = recalculatePlayerStats(playerAfterUpdate);
 
               newRunState.playerCurrentHpInRun = playerAfterUpdate.currentStats.maxHp; 
-              logs.push({ message: `You leveled up to Run Level ${newRunState.runLevel}! Your stats permanently increase and HP is restored.`, color: 'text-yellow-400' });
+              logs.push({ message: `You leveled up to Run Level ${newRunState.runLevel}! Your stats permanently increase and HP is restored.`, color: 'text-[#D6721C]' });
           }
 
           const loot = generateLoot(newRunState.floor);
           if (loot.shards > 0) {
               playerAfterUpdate.eternalShards += loot.shards;
+              newRunState.shardsEarned += loot.shards;
               logs.push({ message: `The enemy dropped ${loot.shards} Eternal Shards.`, color: 'text-purple-400' });
           }
           if (loot.potions > 0) {
               const potionsGained = Math.min(loot.potions, 5 - playerAfterUpdate.potionCount);
               if (potionsGained > 0) {
                   playerAfterUpdate.potionCount += potionsGained;
-                  logs.push({ message: `You found a Health Potion! You now have ${playerAfterUpdate.potionCount}.`, color: 'text-yellow-400' });
+                  logs.push({ message: `You found a Health Potion! You now have ${playerAfterUpdate.potionCount}.`, color: 'text-[#D6721C]' });
               }
           }
 
           if (loot.equipment) {
               newRunState.pendingLoot = loot.equipment;
-              logs.push({ message: `The enemy dropped a piece of equipment: ${loot.equipment.name}!`, color: 'text-yellow-400' });
+              logs.push({ message: `The enemy dropped a piece of equipment: ${loot.equipment.name}!`, color: 'text-[#D6721C]' });
           }
           finalRunState = newRunState;
           return playerAfterUpdate;
@@ -329,7 +335,7 @@ const App: React.FC = () => {
   
       if (newRunState.playerCurrentHpInRun <= 0) {
         playerDefeated = true;
-        logs.push({ message: `You have been defeated...`, color: 'text-yellow-400' });
+        logs.push({ message: `You have been defeated...`, color: 'text-[#D6721C]' });
       }
     }
 
@@ -337,10 +343,10 @@ const App: React.FC = () => {
     setRunState(finalRunState);
 
     if (playerDefeated) {
-      setTimeout(endRun, 2000);
+      setTimeout(() => setGameScreen('run_summary'), 2000);
     }
   
-  }, [activeProfileIndex, profiles, runState, endRun, advanceToNextFloor, updateAchievementProgress, updateCurrentPlayer]);
+  }, [activeProfileIndex, profiles, runState, advanceToNextFloor, updateAchievementProgress, updateCurrentPlayer]);
 
   const handleLootDecision = useCallback((equip: boolean) => {
     if (!runState || !runState.pendingLoot) return;
@@ -395,7 +401,7 @@ const App: React.FC = () => {
     
         if (newRunState.playerCurrentHpInRun <= 0) {
           playerDefeated = true;
-          logs.push({ message: `You have been defeated...`, color: 'text-yellow-400' });
+          logs.push({ message: `You have been defeated...`, color: 'text-[#D6721C]' });
         }
     }
 
@@ -403,15 +409,22 @@ const App: React.FC = () => {
     setRunState(newRunState);
 
     if (playerDefeated) {
-      setTimeout(endRun, 2000);
+      setTimeout(() => setGameScreen('run_summary'), 2000);
     }
-  }, [activeProfileIndex, profiles, runState, endRun, updateCurrentPlayer]);
+  }, [activeProfileIndex, profiles, runState, updateCurrentPlayer]);
   
   const handleExitToProfiles = useCallback(() => {
     setActiveProfileIndex(null);
     setRunState(null);
     setCombatLogs([]);
     setGameScreen('profile_selection');
+  }, []);
+
+  const handleExitToStart = useCallback(() => {
+    setActiveProfileIndex(null);
+    setRunState(null);
+    setCombatLogs([]);
+    setGameScreen('start');
   }, []);
 
   const handleEnterShop = useCallback(() => setGameScreen('shop'), []);
@@ -493,6 +506,7 @@ const App: React.FC = () => {
             onEnterSpire={handleEnterSpire}
             onEnterShop={handleEnterShop}
             onEnterAchievements={handleEnterAchievements}
+            onExitToStart={handleExitToStart}
           />;
         }
         break;
@@ -503,7 +517,7 @@ const App: React.FC = () => {
             runState={runState} 
             logs={combatLogs} 
             onAttack={handleAttack} 
-            onFlee={endRun} 
+            onFlee={() => setGameScreen('run_summary')} 
             onLootDecision={handleLootDecision}
             onUsePotion={handleUsePotion}
           />;
@@ -529,6 +543,14 @@ const App: React.FC = () => {
           />;
         }
         break;
+      case 'run_summary':
+        if (runState) {
+          return <RunSummaryScreen
+            runState={runState}
+            onClose={handleCloseSummary}
+          />;
+        }
+        break;
     }
     // Fallback to start screen if state is invalid
     setGameScreen('start');
@@ -536,7 +558,7 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-900 text-slate-200 flex items-center justify-center p-4 font-serif">
+    <div className="min-h-screen bg-black/50 text-slate-200 flex items-center justify-center p-4 font-serif">
       <div className="w-full max-w-4xl mx-auto">
         {renderScreen()}
       </div>

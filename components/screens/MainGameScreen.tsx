@@ -1,3 +1,4 @@
+
 import React from 'react';
 import type { Player, EquipmentSlot, Equipment } from '../../types';
 import { EQUIPMENT_SLOTS } from '../../constants';
@@ -8,6 +9,7 @@ interface MainGameScreenProps {
   onEnterSpire: () => void;
   onEnterShop: () => void;
   onEnterAchievements: () => void;
+  onExitToStart: () => void;
 }
 
 const StatBox: React.FC<{ label: string; value: string | number }> = ({ label, value }) => (
@@ -22,16 +24,16 @@ const EquipmentSlotDisplay: React.FC<{ slot: EquipmentSlot; item: Equipment | un
     const renderTooltip = () => {
         if (slot === 'Potions' && potionCount > 0) {
             return (
-                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-opacity duration-300 bg-slate-900 border border-yellow-500 rounded-md shadow-lg p-2 text-xs z-10">
-                    <p className="font-bold text-yellow-400">Health Potion</p>
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-opacity duration-300 bg-slate-900 border border-[#D6721C] rounded-md shadow-lg p-2 text-xs z-10">
+                    <p className="font-bold text-[#D6721C]">Health Potion</p>
                     <p className="text-slate-300">Restores 30% of Max HP.</p>
                 </div>
             );
         }
         if (item) {
             return (
-                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-opacity duration-300 bg-slate-900 border border-yellow-500 rounded-md shadow-lg p-2 text-xs z-10">
-                    <p className="font-bold text-yellow-400">{item.name}</p>
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-opacity duration-300 bg-slate-900 border border-[#D6721C] rounded-md shadow-lg p-2 text-xs z-10">
+                    <p className="font-bold text-[#D6721C]">{item.name}</p>
                     {Object.keys(item.stats).length > 0 && (
                         <div className="mt-1 border-t border-slate-600 pt-1 space-y-0.5">
                             {Object.entries(item.stats).map(([stat, value]) => (
@@ -58,10 +60,10 @@ const EquipmentSlotDisplay: React.FC<{ slot: EquipmentSlot; item: Equipment | un
             ) : item ? (
                 <div className="w-16 h-16 bg-slate-800 border-2 border-slate-600 rounded-md flex flex-col items-center justify-center p-1 text-center">
                     <p className="text-2xl">{item.icon}</p>
-                    <p className="text-[10px] text-yellow-400 truncate w-full px-1">{item.name}</p>
+                    <p className="text-[10px] text-[#D6721C] truncate w-full px-1">{item.name}</p>
                 </div>
             ) : (
-                <div className="w-16 h-16 bg-slate-800/50 border-2 border-dashed border-slate-600 rounded-md flex flex-col items-center justify-center p-1 text-center hover:border-yellow-400 hover:bg-slate-800 transition-colors duration-300">
+                <div className="w-16 h-16 bg-slate-800/50 border-2 border-dashed border-slate-600 rounded-md flex flex-col items-center justify-center p-1 text-center hover:border-[#D6721C] hover:bg-slate-800 transition-colors duration-300">
                     <p className="text-[10px] text-slate-500">{slot}</p>
                     <p className="text-xl text-slate-600">+</p>
                 </div>
@@ -72,7 +74,7 @@ const EquipmentSlotDisplay: React.FC<{ slot: EquipmentSlot; item: Equipment | un
 };
 
 
-const MainGameScreen: React.FC<MainGameScreenProps> = ({ player, onExitToProfiles, onEnterSpire, onEnterShop, onEnterAchievements }) => {
+const MainGameScreen: React.FC<MainGameScreenProps> = ({ player, onExitToProfiles, onEnterSpire, onEnterShop, onEnterAchievements, onExitToStart }) => {
   const xpPercentage = (player.xp / player.xpToNextLevel) * 100;
   const hasAccountBuffs = Object.keys(player.accountBuffs).length > 0;
 
@@ -87,12 +89,20 @@ const MainGameScreen: React.FC<MainGameScreenProps> = ({ player, onExitToProfile
         Exit to Profiles
       </button>
 
+      <button
+        onClick={onExitToStart}
+        className="absolute top-0 left-0 z-10 px-4 py-1 bg-red-800 text-slate-300 text-xs font-semibold rounded-br-lg rounded-tl-xl hover:bg-red-700 transition-colors focus:outline-none focus:ring-2 focus:ring-red-600"
+        aria-label="Return to start page"
+      >
+        (Temp) Return to Start
+      </button>
+
       {/* Left Panel: Character Info */}
       <div className="lg:w-1/3 bg-slate-800 border border-slate-700 rounded-xl p-4 flex flex-col shadow-lg">
         <div className="flex items-center mb-2">
             <div className="text-4xl mr-4">{player.classInfo.icon}</div>
             <div>
-                <h2 className="text-2xl font-bold text-yellow-400">{player.classInfo.name}</h2>
+                <h2 className="text-2xl font-bold text-[#D6721C]">{player.classInfo.name}</h2>
                 <p className="text-base text-slate-300">Level {player.level}</p>
                 <div className="flex items-center text-sm mt-2">
                     <span className="text-purple-400 mr-1.5">💎</span>
@@ -109,7 +119,7 @@ const MainGameScreen: React.FC<MainGameScreenProps> = ({ player, onExitToProfile
             </div>
             <div className="w-full bg-slate-900 rounded-full h-2.5">
                 <div 
-                    className="bg-yellow-400 h-2.5 rounded-full transition-all duration-500" 
+                    className="bg-[#D6721C] h-2.5 rounded-full transition-all duration-500" 
                     style={{ width: `${xpPercentage}%` }}
                 ></div>
             </div>
@@ -118,7 +128,7 @@ const MainGameScreen: React.FC<MainGameScreenProps> = ({ player, onExitToProfile
         <div className="mt-auto space-y-4">
             {/* Account Bonuses Section */}
             <div>
-                <h4 className="text-sm font-bold text-slate-400 border-b border-slate-700 pb-1 mb-2">Account Bonuses</h4>
+                <h4 className="text-sm font-bold text-[#D6721C] border-b border-slate-700 pb-1 mb-2">Account Bonuses</h4>
                 {hasAccountBuffs ? (
                     <div className="grid grid-cols-3 gap-1 text-xs">
                         {Object.entries(player.accountBuffs).map(([stat, value]) => (
@@ -146,7 +156,7 @@ const MainGameScreen: React.FC<MainGameScreenProps> = ({ player, onExitToProfile
 
       <div className="lg:w-2/3 flex flex-col">
         <div className="flex-grow bg-slate-800 border border-slate-700 rounded-xl p-4 shadow-lg">
-          <h3 className="text-xl font-bold text-slate-300 mb-3 border-b-2 border-slate-700 pb-2">Equipment</h3>
+          <h3 className="text-xl font-bold text-[#D6721C] mb-3 border-b-2 border-slate-700 pb-2">Equipment</h3>
           <div className="flex flex-wrap gap-4 justify-center">
             {EQUIPMENT_SLOTS.map((slot) => (
               <EquipmentSlotDisplay 
@@ -174,7 +184,7 @@ const MainGameScreen: React.FC<MainGameScreenProps> = ({ player, onExitToProfile
           </button>
           <button
             onClick={onEnterSpire}
-            className="w-full px-6 py-3 bg-yellow-500 text-slate-900 font-bold text-sm rounded-lg shadow-lg shadow-yellow-500/20 hover:bg-yellow-400 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-yellow-300 flex items-center justify-center"
+            className="w-full px-6 py-3 bg-[#D6721C] text-slate-900 font-bold text-sm rounded-lg shadow-lg shadow-[#D6721C]/20 hover:bg-[#E1883D] transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-[#D6721C] flex items-center justify-center"
           >
             Enter Spire
           </button>

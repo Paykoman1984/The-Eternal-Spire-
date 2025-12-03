@@ -1,4 +1,5 @@
-import React, { useRef, useEffect } from 'react';
+
+import React, { useRef, useEffect, useState } from 'react';
 import type { Player, RunState, CombatLog, Equipment, Stats } from '../../types';
 
 interface CombatScreenProps {
@@ -21,7 +22,7 @@ const HealthBar: React.FC<{ current: number; max: number; label: string }> = ({ 
       </div>
       <div className="w-full bg-slate-900 rounded-full h-5 border-2 border-slate-700">
         <div
-          className={`h-full rounded-full transition-all duration-300 ${percentage > 50 ? 'bg-green-600' : percentage > 25 ? 'bg-yellow-500' : 'bg-red-600'}`}
+          className={`h-full rounded-full transition-all duration-300 ${percentage > 50 ? 'bg-green-600' : percentage > 25 ? 'bg-[#D6721C]' : 'bg-red-600'}`}
           style={{ width: `${percentage}%` }}
         ></div>
       </div>
@@ -58,7 +59,7 @@ const ItemCard: React.FC<{ title: string, item: Equipment | null }> = ({ title, 
             <>
                 <div className="flex items-center mb-2">
                     <span className="text-3xl mr-2">{item.icon}</span>
-                    <span className="font-bold text-yellow-400 text-base">{item.name}</span>
+                    <span className="font-bold text-[#D6721C] text-base">{item.name}</span>
                 </div>
                 <div className="space-y-1">
                     {Object.entries(item.stats).map(([stat, value]) => (
@@ -85,8 +86,8 @@ const LootDecision: React.FC<{
 
     return (
         <div className="absolute inset-0 bg-slate-900/80 z-20 flex items-start justify-center animate-fadeIn p-4 pt-20">
-            <div className="bg-slate-800 border-2 border-yellow-500 rounded-xl p-4 max-w-lg w-full shadow-2xl shadow-yellow-500/10">
-                <h3 className="text-xl text-center font-bold text-yellow-400 mb-4">New Item Dropped!</h3>
+            <div className="bg-slate-800 border-2 border-[#D6721C] rounded-xl p-4 max-w-lg w-full shadow-2xl shadow-[#D6721C]/10">
+                <h3 className="text-xl text-center font-bold text-[#D6721C] mb-4">New Item Dropped!</h3>
                 <div className="flex gap-4 mb-4">
                     <ItemCard title="Currently Equipped" item={oldItem} />
                     <ItemCard title="New Item" item={newItem} />
@@ -122,6 +123,7 @@ const LootDecision: React.FC<{
 
 const CombatScreen: React.FC<CombatScreenProps> = ({ player, runState, logs, onAttack, onFlee, onLootDecision, onUsePotion }) => {
   const logContainerRef = useRef<HTMLDivElement>(null);
+  const [attackCooldown, setAttackCooldown] = useState(false);
 
   const playerDead = runState.playerCurrentHpInRun <= 0;
   const isLootPending = runState.pendingLoot !== null;
@@ -136,6 +138,15 @@ const CombatScreen: React.FC<CombatScreenProps> = ({ player, runState, logs, onA
     }
   }, [logs]);
 
+  const handleAttackClick = () => {
+      if (attackCooldown || isPostCombatPhase) return;
+      setAttackCooldown(true);
+      onAttack();
+      setTimeout(() => {
+          setAttackCooldown(false);
+      }, 300);
+  };
+
   return (
     <div className="relative flex flex-col gap-4 animate-fadeIn w-full">
       {isLootPending && runState.pendingLoot && (
@@ -146,7 +157,7 @@ const CombatScreen: React.FC<CombatScreenProps> = ({ player, runState, logs, onA
          />
       )}
       <div className="bg-slate-800 border border-slate-700 rounded-xl p-4 shadow-lg text-center">
-        <h2 className="text-xl font-bold text-yellow-400">Floor {runState.floor}</h2>
+        <h2 className="text-xl font-bold text-[#D6721C]">Floor {runState.floor}</h2>
         <p className="text-sm text-slate-400 mb-2">Run Level: {runState.runLevel}</p>
         <div className="flex items-center justify-center text-xs mt-2 border-t border-slate-700 pt-2">
             <span className="text-purple-400 mr-1.5">💎</span>
@@ -193,7 +204,7 @@ const CombatScreen: React.FC<CombatScreenProps> = ({ player, runState, logs, onA
 
       <div className="grid grid-cols-3 gap-4">
         <button
-          onClick={onAttack}
+          onClick={handleAttackClick}
           disabled={playerDead || isPostCombatPhase}
           className="w-full px-4 py-3 bg-red-700 text-white font-bold text-sm rounded-lg shadow-lg shadow-red-500/20 hover:bg-red-600 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-red-500 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed disabled:transform-none"
         >

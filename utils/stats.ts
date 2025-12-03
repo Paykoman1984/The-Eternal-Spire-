@@ -44,8 +44,8 @@ export function recalculatePlayerStats(player: Player): Player {
         }
     }
 
-    // Add dexterity bonus to evasion
-    newStats.evasion += Math.floor(newStats.dex / 4);
+    // Add dexterity bonus to evasion (Reduced scaling: previously / 4)
+    newStats.evasion += Math.floor(newStats.dex / 8);
     
     // 3. Calculate and apply percentage-based account buffs
     const accountBuffs = calculateAccountBuffs(updatedPlayer.level);
@@ -59,6 +59,9 @@ export function recalculatePlayerStats(player: Player): Player {
             newStats[key] += bonus;
         }
     }
+
+    // CAP EVASION AT 35%
+    newStats.evasion = Math.min(newStats.evasion, 35);
 
     // Assign the final calculated stats
     updatedPlayer.currentStats = newStats;

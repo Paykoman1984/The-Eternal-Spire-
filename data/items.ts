@@ -45,5 +45,5 @@ export const STAT_WEIGHTS: Record<keyof Stats, number> = {
     defense: 1,
     maxHp: 5,
     critRate: 0.5,
-    evasion: 0.75,
+    evasion: 0.4,
 };

@@ -37,6 +37,9 @@ export function generateEnemy(floor: number): Enemy {
       enemy.xpReward = Math.floor(enemy.xpReward * scaleFactor);
   }
   
+  // Cap Enemy Evasion at 35%
+  enemy.stats.evasion = Math.min(enemy.stats.evasion, 35);
+  
   enemy.stats.hp = enemy.stats.maxHp;
 
   return enemy;

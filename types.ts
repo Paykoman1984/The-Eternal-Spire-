@@ -1,4 +1,4 @@
-export type GameScreen = 'start' | 'class_selection' | 'main_game' | 'combat';
+export type GameScreen = 'start' | 'class_selection' | 'main_game' | 'combat' | 'shop';
 
 export type ClassName = 'Warrior' | 'Rogue' | 'Mage';
 
@@ -18,6 +18,17 @@ export interface PlayerClass {
   icon: string;
 }
 
+export type GearSlot = 'Weapon' | 'Helmet' | 'Armor' | 'Boots' | 'Gloves';
+export type EquipmentSlot = GearSlot | 'Potions';
+
+export interface Equipment {
+  name: string;
+  slot: GearSlot;
+  icon: string;
+  stats: Partial<Stats>;
+  cost?: number;
+}
+
 export interface Player {
   level: number; // Account level
   xp: number; // Account XP
@@ -26,9 +37,11 @@ export interface Player {
   currentStats: Stats; // Persistent stats
   currentHp: number; // HP outside of a run
   eternalShards: number;
+  potionCount: number;
+  equipment: Partial<Record<GearSlot, Equipment>>;
+  shopInventory: Equipment[];
+  lastShopRefreshLevel: number;
 }
-
-export type EquipmentSlot = 'Weapon' | 'Helmet' | 'Armor' | 'Boots' | 'Gloves' | 'Potions';
 
 export interface Enemy {
   name: string;
@@ -49,10 +62,11 @@ export interface RunState {
   runXpToNextLevel: number;
   playerCurrentHpInRun: number;
   currentEnemy: Enemy;
+  pendingLoot: Equipment | null;
 }
 
 export interface CombatLog {
     id: number;
     message: string;
-    color: 'text-green-400' | 'text-red-400' | 'text-yellow-400' | 'text-slate-400';
+    color: 'text-green-400' | 'text-red-400' | 'text-yellow-400' | 'text-slate-400' | 'text-purple-400';
 }

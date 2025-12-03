@@ -1,4 +1,4 @@
-import type { PlayerClass, EquipmentSlot } from './types';
+import type { PlayerClass, EquipmentSlot, GearSlot } from './types';
 
 export const CLASSES: PlayerClass[] = [
   {
@@ -20,6 +20,15 @@ export const CLASSES: PlayerClass[] = [
     icon: '🔮',
   },
 ];
+
+export const GEAR_SLOTS: GearSlot[] = [
+  'Weapon',
+  'Helmet',
+  'Armor',
+  'Boots',
+  'Gloves',
+];
+
 
 export const EQUIPMENT_SLOTS: EquipmentSlot[] = [
   'Weapon',

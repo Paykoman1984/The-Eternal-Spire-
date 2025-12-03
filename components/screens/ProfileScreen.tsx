@@ -18,7 +18,7 @@ const ProfileSlot: React.FC<{
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
 
   useEffect(() => {
-    let timeout: NodeJS.Timeout;
+    let timeout: ReturnType<typeof setTimeout>;
     if (isConfirmingDelete) {
         timeout = setTimeout(() => {
             setIsConfirmingDelete(false);

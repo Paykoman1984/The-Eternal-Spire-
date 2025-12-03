@@ -254,12 +254,17 @@ const App: React.FC = () => {
     const activePlayer = activeProfileIndex !== null ? profiles[activeProfileIndex] : null;
     if (!activePlayer || !runState || runState.pendingLoot) return;
   
-    let newRunState = { ...runState };
+    // We update local copies first, then commit to state
+    let newRunState = { 
+        ...runState, 
+        currentEnemy: { ...runState.currentEnemy, stats: { ...runState.currentEnemy.stats } } 
+    };
     let logs: { message: string, color: CombatLog['color'] }[] = [];
     let playerDefeated = false;
     let didPlayerLevelUpInRun = false;
+    let lootDropped: Equipment | null = null;
   
-    // Player's turn
+    // --- Player Turn ---
     if (Math.random() * 100 < newRunState.currentEnemy.stats.evasion) {
         logs.push({ message: `The ${newRunState.currentEnemy.name} dodged your attack!`, color: 'text-red-400' });
     } else {
@@ -272,11 +277,19 @@ const App: React.FC = () => {
         logs.push({ message: `You hit the ${newRunState.currentEnemy.name} for ${playerDamage} damage${playerCrit ? ' (CRIT!)' : ''}.`, color: playerCrit ? 'text-green-400' : 'text-slate-200' });
     }
 
-    let finalRunState = newRunState;
+    // --- Check Enemy Death ---
     if (newRunState.currentEnemy.stats.hp <= 0) {
       logs.push({ message: `You have defeated the ${newRunState.currentEnemy.name}!`, color: 'text-[#D6721C]' });
       newRunState.enemiesKilled += 1;
       
+      // Calculate loot *before* updating state to avoid race conditions
+      const loot = generateLoot(newRunState.floor);
+      if (loot.equipment) {
+          lootDropped = loot.equipment;
+          newRunState.pendingLoot = loot.equipment;
+          logs.push({ message: `The enemy dropped a piece of equipment: ${loot.equipment.name}!`, color: 'text-[#D6721C]' });
+      }
+
       updateCurrentPlayer(player => {
           let playerAfterUpdate = { ...player };
           
@@ -303,7 +316,6 @@ const App: React.FC = () => {
               logs.push({ message: `You leveled up to Run Level ${newRunState.runLevel}! Your stats permanently increase and HP is restored.`, color: 'text-[#D6721C]' });
           }
 
-          const loot = generateLoot(newRunState.floor);
           if (loot.shards > 0) {
               playerAfterUpdate.eternalShards += loot.shards;
               newRunState.shardsEarned += loot.shards;
@@ -317,21 +329,16 @@ const App: React.FC = () => {
               }
           }
 
-          if (loot.equipment) {
-              newRunState.pendingLoot = loot.equipment;
-              logs.push({ message: `The enemy dropped a piece of equipment: ${loot.equipment.name}!`, color: 'text-[#D6721C]' });
-          }
-          finalRunState = newRunState;
           return playerAfterUpdate;
       });
       
-      if (!finalRunState.pendingLoot) {
-          setCombatLogs(prev => [...prev, ...logs.map(log => ({...log, id: Date.now() + Math.random() * logs.indexOf(log)}))]);
-          setRunState(finalRunState);
+      // Only advance automatically if NO equipment dropped
+      if (!lootDropped) {
           setTimeout(advanceToNextFloor, 1000);
-          return;
       }
-    } else { // Enemy's turn
+
+    } else { 
+      // --- Enemy Turn (if still alive) ---
       if (Math.random() * 100 < activePlayer.currentStats.evasion) {
           logs.push({ message: `You dodged the ${newRunState.currentEnemy.name}'s attack!`, color: 'text-red-400' });
       } else {
@@ -349,7 +356,7 @@ const App: React.FC = () => {
     }
 
     setCombatLogs(prev => [...prev, ...logs.map(log => ({...log, id: Date.now() + Math.random() * logs.indexOf(log)}))]);
-    setRunState(finalRunState);
+    setRunState(newRunState);
 
     if (playerDefeated) {
       setTimeout(() => setGameScreen('run_summary'), 2000);

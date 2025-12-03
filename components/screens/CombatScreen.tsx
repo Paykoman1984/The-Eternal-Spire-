@@ -156,7 +156,7 @@ const CombatScreen: React.FC<CombatScreenProps> = ({ player, runState, logs, onA
       )}
       <div className="bg-slate-800 border border-slate-700 rounded-xl p-2 shadow-lg text-center">
         <h2 className="text-lg font-bold text-[#D6721C]">Floor {runState.floor}</h2>
-        <p className="text-xs text-slate-400">Run Lvl: {runState.runLevel} | Shards: {player.eternalShards}</p>
+        <p className="text-xs text-slate-400">Run Lvl: {runState.runLevel} | Shards: {runState.shardsEarned}</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
@@ -177,10 +177,32 @@ const CombatScreen: React.FC<CombatScreenProps> = ({ player, runState, logs, onA
         </div>
 
         <div className="bg-slate-800 border border-slate-700 rounded-xl p-2.5 shadow-lg">
-          <div className="flex items-center mb-2">
-            <span className="text-2xl mr-2">{runState.currentEnemy.icon}</span>
-            <h3 className="text-base font-bold text-slate-200">{runState.currentEnemy.name}</h3>
+          <div className="relative group w-max mx-auto md:mx-0">
+            <div className="flex items-center mb-2 cursor-help">
+                <span className="text-2xl mr-2">{runState.currentEnemy.icon}</span>
+                <h3 className="text-base font-bold text-slate-200">{runState.currentEnemy.name}</h3>
+            </div>
+            
+            {/* Enemy Stats Tooltip */}
+            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-36 invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-opacity duration-300 bg-slate-900 border border-[#D6721C] rounded-md shadow-lg p-2 text-xs z-30 pointer-events-none">
+                <p className="font-bold text-[#D6721C] mb-1 text-center">Stats</p>
+                <div className="space-y-0.5">
+                    <div className="flex justify-between">
+                        <span className="text-slate-400">ATK</span>
+                        <span className="text-slate-200 font-bold">{runState.currentEnemy.stats.attack}</span>
+                    </div>
+                    <div className="flex justify-between">
+                        <span className="text-slate-400">DEF</span>
+                        <span className="text-slate-200 font-bold">{runState.currentEnemy.stats.defense}</span>
+                    </div>
+                     <div className="flex justify-between">
+                        <span className="text-slate-400">EVA</span>
+                        <span className="text-slate-200 font-bold">{runState.currentEnemy.stats.evasion}%</span>
+                    </div>
+                </div>
+            </div>
           </div>
+          
           <HealthBar current={runState.currentEnemy.stats.hp} max={runState.currentEnemy.stats.maxHp} label="Enemy HP" />
         </div>
       </div>

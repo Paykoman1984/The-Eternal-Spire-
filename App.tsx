@@ -259,14 +259,19 @@ const App: React.FC = () => {
     let playerDefeated = false;
     let didPlayerLevelUpInRun = false;
   
-    const playerCrit = Math.random() * 100 < activePlayer.currentStats.critRate;
-    const playerAttackStat = Math.max(activePlayer.currentStats.str, activePlayer.currentStats.dex, activePlayer.currentStats.int);
-    let playerDamage = Math.max(1, playerAttackStat - newRunState.currentEnemy.stats.defense);
-    if(playerCrit) playerDamage *= 2;
-    playerDamage = Math.floor(playerDamage);
-    newRunState.currentEnemy.stats.hp = Math.max(0, newRunState.currentEnemy.stats.hp - playerDamage);
-    logs.push({ message: `You hit the ${newRunState.currentEnemy.name} for ${playerDamage} damage${playerCrit ? ' (CRIT!)' : ''}.`, color: playerCrit ? 'text-green-400' : 'text-slate-200' });
-  
+    // Player's turn
+    if (Math.random() * 100 < newRunState.currentEnemy.stats.evasion) {
+        logs.push({ message: `The ${newRunState.currentEnemy.name} dodged your attack!`, color: 'text-red-400' });
+    } else {
+        const playerCrit = Math.random() * 100 < activePlayer.currentStats.critRate;
+        const playerAttackStat = Math.max(activePlayer.currentStats.str, activePlayer.currentStats.dex, activePlayer.currentStats.int);
+        let playerDamage = Math.max(1, playerAttackStat - newRunState.currentEnemy.stats.defense);
+        if (playerCrit) playerDamage *= 2;
+        playerDamage = Math.floor(playerDamage);
+        newRunState.currentEnemy.stats.hp = Math.max(0, newRunState.currentEnemy.stats.hp - playerDamage);
+        logs.push({ message: `You hit the ${newRunState.currentEnemy.name} for ${playerDamage} damage${playerCrit ? ' (CRIT!)' : ''}.`, color: playerCrit ? 'text-green-400' : 'text-slate-200' });
+    }
+
     let finalRunState = newRunState;
     if (newRunState.currentEnemy.stats.hp <= 0) {
       logs.push({ message: `You have defeated the ${newRunState.currentEnemy.name}!`, color: 'text-[#D6721C]' });
@@ -326,12 +331,16 @@ const App: React.FC = () => {
           setTimeout(advanceToNextFloor, 1000);
           return;
       }
-    } else {
-      const playerDefense = didPlayerLevelUpInRun ? (profiles[activeProfileIndex!]!.currentStats.defense) : activePlayer.currentStats.defense;
-      let enemyDamage = Math.max(1, newRunState.currentEnemy.stats.attack - playerDefense);
-      enemyDamage = Math.floor(enemyDamage);
-      newRunState.playerCurrentHpInRun = Math.max(0, newRunState.playerCurrentHpInRun - enemyDamage);
-      logs.push({ message: `${newRunState.currentEnemy.name} hits you for ${enemyDamage} damage.`, color: 'text-slate-200' });
+    } else { // Enemy's turn
+      if (Math.random() * 100 < activePlayer.currentStats.evasion) {
+          logs.push({ message: `You dodged the ${newRunState.currentEnemy.name}'s attack!`, color: 'text-red-400' });
+      } else {
+          const playerDefense = didPlayerLevelUpInRun ? (profiles[activeProfileIndex!]!.currentStats.defense) : activePlayer.currentStats.defense;
+          let enemyDamage = Math.max(1, newRunState.currentEnemy.stats.attack - playerDefense);
+          enemyDamage = Math.floor(enemyDamage);
+          newRunState.playerCurrentHpInRun = Math.max(0, newRunState.playerCurrentHpInRun - enemyDamage);
+          logs.push({ message: `${newRunState.currentEnemy.name} hits you for ${enemyDamage} damage.`, color: 'text-slate-200' });
+      }
   
       if (newRunState.playerCurrentHpInRun <= 0) {
         playerDefeated = true;
@@ -394,15 +403,19 @@ const App: React.FC = () => {
     logs.push({ message: `You used a Health Potion and restored ${actualHeal} HP.`, color: 'text-slate-200' });
 
     if (newRunState.currentEnemy.stats.hp > 0) {
-        let enemyDamage = Math.max(1, newRunState.currentEnemy.stats.attack - activePlayer.currentStats.defense);
-        enemyDamage = Math.floor(enemyDamage);
-        newRunState.playerCurrentHpInRun = Math.max(0, newRunState.playerCurrentHpInRun - enemyDamage);
-        logs.push({ message: `${newRunState.currentEnemy.name} hits you for ${enemyDamage} damage.`, color: 'text-slate-200' });
+      if (Math.random() * 100 < activePlayer.currentStats.evasion) {
+          logs.push({ message: `You dodged the ${newRunState.currentEnemy.name}'s attack!`, color: 'text-red-400' });
+      } else {
+          let enemyDamage = Math.max(1, newRunState.currentEnemy.stats.attack - activePlayer.currentStats.defense);
+          enemyDamage = Math.floor(enemyDamage);
+          newRunState.playerCurrentHpInRun = Math.max(0, newRunState.playerCurrentHpInRun - enemyDamage);
+          logs.push({ message: `${newRunState.currentEnemy.name} hits you for ${enemyDamage} damage.`, color: 'text-slate-200' });
+      }
     
-        if (newRunState.playerCurrentHpInRun <= 0) {
-          playerDefeated = true;
-          logs.push({ message: `You have been defeated...`, color: 'text-[#D6721C]' });
-        }
+      if (newRunState.playerCurrentHpInRun <= 0) {
+        playerDefeated = true;
+        logs.push({ message: `You have been defeated...`, color: 'text-[#D6721C]' });
+      }
     }
 
     setCombatLogs(prev => [...prev, ...logs.map(log => ({...log, id: Date.now() + Math.random() * logs.indexOf(log)}))]);
@@ -418,13 +431,6 @@ const App: React.FC = () => {
     setRunState(null);
     setCombatLogs([]);
     setGameScreen('profile_selection');
-  }, []);
-
-  const handleExitToStart = useCallback(() => {
-    setActiveProfileIndex(null);
-    setRunState(null);
-    setCombatLogs([]);
-    setGameScreen('start');
   }, []);
 
   const handleEnterShop = useCallback(() => setGameScreen('shop'), []);
@@ -506,7 +512,6 @@ const App: React.FC = () => {
             onEnterSpire={handleEnterSpire}
             onEnterShop={handleEnterShop}
             onEnterAchievements={handleEnterAchievements}
-            onExitToStart={handleExitToStart}
           />;
         }
         break;

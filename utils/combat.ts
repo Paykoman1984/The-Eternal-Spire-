@@ -27,11 +27,13 @@ export function generateEnemy(floor: number): Enemy {
       enemy.stats.maxHp = Math.floor(enemy.stats.maxHp * bossScaleFactor);
       enemy.stats.attack = Math.floor(enemy.stats.attack * bossScaleFactor);
       enemy.stats.defense = Math.floor(enemy.stats.defense * bossScaleFactor);
+      enemy.stats.evasion = Math.floor(enemy.stats.evasion * bossScaleFactor);
       enemy.xpReward = Math.floor(enemy.xpReward * bossScaleFactor);
   } else {
       enemy.stats.maxHp = Math.floor(enemy.stats.maxHp * scaleFactor);
       enemy.stats.attack = Math.floor(enemy.stats.attack * scaleFactor);
       enemy.stats.defense = Math.floor(enemy.stats.defense * scaleFactor);
+      enemy.stats.evasion = Math.floor(enemy.stats.evasion * scaleFactor);
       enemy.xpReward = Math.floor(enemy.xpReward * scaleFactor);
   }
   

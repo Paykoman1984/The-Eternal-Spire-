@@ -10,6 +10,7 @@ export interface Stats {
   maxHp: number;
   defense: number;
   critRate: number;
+  evasion: number;
 }
 
 export interface PlayerClass {
@@ -58,6 +59,7 @@ export interface Enemy {
     hp: number;
     attack: number;
     defense: number;
+    evasion: number;
   };
   xpReward: number;
 }
@@ -89,7 +91,7 @@ export interface Reward {
 }
 
 export interface Achievement {
-  id: string;
+  id:string;
   title: string;
   description: string;
   type: AchievementType;

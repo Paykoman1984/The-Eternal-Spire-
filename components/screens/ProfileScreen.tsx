@@ -31,19 +31,19 @@ const ProfileSlot: React.FC<{
     // Existing profile slot
     return (
       <div 
-        className="bg-slate-800 border-2 border-slate-700 rounded-xl p-4 flex flex-col text-left transition-all duration-300 shadow-lg h-full"
+        className="bg-slate-800 border-2 border-slate-700 rounded-xl p-3 flex flex-col text-left transition-all duration-300 shadow-lg h-full"
       >
-        <div className="flex items-center mb-2">
-            <span className="text-4xl mr-3">{profile.classInfo.icon}</span>
+        <div className="flex items-center mb-1.5">
+            <span className="text-3xl mr-2.5">{profile.classInfo.icon}</span>
             <div>
-                <h3 className="text-lg font-bold text-[#D6721C]">{profile.classInfo.name}</h3>
+                <h3 className="text-base font-bold text-[#D6721C]">{profile.classInfo.name}</h3>
                 <p className="text-sm text-slate-300">Level {profile.level}</p>
             </div>
         </div>
-        <div className="text-sm text-slate-400 mt-auto">
+        <div className="text-xs text-slate-400 mt-auto">
           Max Floor: <span className="font-bold text-slate-200">{profile.maxFloorReached}</span>
         </div>
-        <div className="flex flex-col gap-2 mt-4">
+        <div className="flex flex-col gap-1.5 mt-3">
             <button
               onClick={onLoad}
               className="w-full px-4 py-2 font-semibold text-sm rounded-lg transition-colors duration-300 focus:outline-none focus:ring-2 bg-[#D6721C] text-slate-900 hover:bg-[#E1883D] focus:ring-[#D6721C]"
@@ -61,13 +61,13 @@ const ProfileSlot: React.FC<{
                     }
                 }}
                 type="button"
-                className={`w-full px-4 py-1.5 font-semibold text-xs rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 ${
+                className={`w-full px-4 py-1.5 font-semibold text-xs rounded-md transition-all duration-200 focus:outline-none focus:ring-2 ${
                     isConfirmingDelete 
                         ? "bg-red-600 text-white hover:bg-red-500 focus:ring-red-400 shadow-md transform scale-105" 
                         : "bg-red-900/70 text-red-300 hover:bg-red-800 focus:ring-red-600"
                 }`}
             >
-                {isConfirmingDelete ? "Click to Confirm Delete" : "Delete Profile"}
+                {isConfirmingDelete ? "Confirm Delete" : "Delete"}
             </button>
         </div>
       </div>
@@ -80,8 +80,8 @@ const ProfileSlot: React.FC<{
         className="bg-slate-800/50 border-2 border-dashed border-slate-700 rounded-xl p-4 flex flex-col justify-center items-center text-center h-full cursor-pointer hover:border-[#D6721C] hover:bg-slate-800 transition-all duration-300"
         onClick={onStartNew}
     >
-      <p className="text-4xl text-slate-600 mb-2">+</p>
-      <p className="text-slate-400 font-bold text-lg">New Game</p>
+      <p className="text-3xl text-slate-600 mb-1">+</p>
+      <p className="text-slate-400 font-bold text-base">New Game</p>
     </div>
   );
 };
@@ -89,12 +89,12 @@ const ProfileSlot: React.FC<{
 const ProfileScreen: React.FC<ProfileScreenProps> = ({ profiles, onLoadProfile, onStartNewGame, onDeleteProfile }) => {
   
   return (
-    <div className="animate-fadeIn w-full max-w-2xl mx-auto">
-      <h2 className="text-2xl md:text-3xl font-bold text-center mb-6 text-[#D6721C]">
+    <div className="animate-fadeIn w-full max-w-xl mx-auto">
+      <h2 className="text-xl md:text-2xl font-bold text-center mb-4 text-[#D6721C]">
         Select or Create a Profile
       </h2>
-      <p className="text-center text-slate-400 mb-8 text-sm">Click an empty slot to begin a new adventure, or delete a profile to make space.</p>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <p className="text-center text-slate-400 mb-6 text-xs">Click an empty slot to begin a new adventure, or delete a profile to make space.</p>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {profiles.map((profile, index) => (
             <ProfileSlot
               key={index}

@@ -8,7 +8,7 @@ interface ClassSelectionScreenProps {
 }
 
 const StatDisplay: React.FC<{ stats: Stats }> = ({ stats }) => (
-    <div className="mt-2 grid grid-cols-3 gap-2 text-center">
+    <div className="mt-2 grid grid-cols-3 gap-1 text-center">
         <div>
             <p className="text-xs text-red-400">STR</p>
             <p className="font-bold text-sm">{stats.str}</p>
@@ -25,16 +25,16 @@ const StatDisplay: React.FC<{ stats: Stats }> = ({ stats }) => (
 );
 
 const ClassCard: React.FC<{ playerClass: PlayerClass; onSelect: () => void }> = ({ playerClass, onSelect }) => (
-  <div className="bg-slate-800 border-2 border-slate-700 rounded-xl p-4 flex flex-col text-center transform hover:scale-105 hover:border-[#D6721C] transition-all duration-300 shadow-lg h-full">
-    <div className="flex items-center justify-center mb-3">
-      <span className="text-4xl mr-2">{playerClass.icon}</span>
-      <h3 className="text-lg font-bold text-[#D6721C]">{playerClass.name}</h3>
+  <div className="bg-slate-800 border-2 border-slate-700 rounded-xl p-3 flex flex-col text-center transform hover:scale-105 hover:border-[#D6721C] transition-all duration-300 shadow-lg h-full">
+    <div className="flex items-center justify-center mb-2">
+      <span className="text-3xl mr-2">{playerClass.icon}</span>
+      <h3 className="text-base font-bold text-[#D6721C]">{playerClass.name}</h3>
     </div>
-    <p className="text-xs text-slate-400 mb-4 flex-grow">{playerClass.description}</p>
+    <p className="text-xs text-slate-400 mb-3 flex-grow">{playerClass.description}</p>
     <StatDisplay stats={playerClass.baseStats} />
     <button
       onClick={onSelect}
-      className="mt-4 w-full px-4 py-2 bg-slate-700 text-[#D6721C] font-semibold text-sm rounded-lg hover:bg-[#D6721C] hover:text-slate-900 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-[#D6721C]"
+      className="mt-3 w-full px-4 py-1.5 bg-slate-700 text-[#D6721C] font-semibold text-xs rounded-lg hover:bg-[#D6721C] hover:text-slate-900 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-[#D6721C]"
     >
       Choose
     </button>
@@ -44,13 +44,13 @@ const ClassCard: React.FC<{ playerClass: PlayerClass; onSelect: () => void }> = 
 const ClassSelectionScreen: React.FC<ClassSelectionScreenProps> = ({ onClassSelect }) => {
   return (
     <div className="animate-fadeIn">
-      <h2 className="text-xl md:text-2xl font-bold text-center mb-6 text-[#D6721C]">Choose Your Path</h2>
-      <div className="grid grid-cols-2 gap-4">
+      <h2 className="text-lg md:text-xl font-bold text-center mb-4 text-[#D6721C]">Choose Your Path</h2>
+      <div className="grid grid-cols-2 gap-3">
         {CLASSES.map((playerClass) => (
           <ClassCard key={playerClass.name} playerClass={playerClass} onSelect={() => onClassSelect(playerClass)} />
         ))}
-        <div className="bg-slate-800/50 border-2 border-dashed border-slate-700 rounded-xl p-4 flex justify-center items-center text-center h-full">
-            <p className="text-slate-500 font-bold text-lg">Coming Soon</p>
+        <div className="bg-slate-800/50 border-2 border-dashed border-slate-700 rounded-xl p-3 flex justify-center items-center text-center h-full">
+            <p className="text-slate-500 font-bold text-base">Coming Soon</p>
         </div>
       </div>
     </div>

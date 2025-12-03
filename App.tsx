@@ -17,32 +17,37 @@ const PROFILES_STORAGE_KEY = 'eternal_spire_profiles';
 
 const App: React.FC = () => {
   const [gameScreen, setGameScreen] = useState<GameScreen>('start');
-  const [profiles, setProfiles] = useState<(Player | null)[]>([null, null]);
-  const [activeProfileIndex, setActiveProfileIndex] = useState<number | null>(null);
-  const [runState, setRunState] = useState<RunState | null>(null);
-  const [combatLogs, setCombatLogs] = useState<CombatLog[]>([]);
-
-  useEffect(() => {
+  
+  // Load profiles from localStorage once on initial component load using a lazy initializer.
+  const [profiles, setProfiles] = useState<(Player | null)[]>(() => {
     try {
         const savedProfiles = localStorage.getItem(PROFILES_STORAGE_KEY);
         if (savedProfiles) {
             const parsedProfiles = JSON.parse(savedProfiles);
             if (Array.isArray(parsedProfiles) && (parsedProfiles.length === 2)) {
-                setProfiles(parsedProfiles);
+                return parsedProfiles;
             }
         }
     } catch (error) {
         console.error("Failed to load profiles:", error);
     }
-  }, []);
+    return [null, null]; // Default if nothing is saved or data is invalid
+  });
 
-  const saveProfiles = useCallback((updatedProfiles: (Player | null)[]) => {
+  const [activeProfileIndex, setActiveProfileIndex] = useState<number | null>(null);
+  const [runState, setRunState] = useState<RunState | null>(null);
+  const [combatLogs, setCombatLogs] = useState<CombatLog[]>([]);
+
+  // Effect to automatically save profiles to localStorage whenever they change.
+  // This is more robust than manual saving and fixes the delete bug.
+  useEffect(() => {
       try {
-          localStorage.setItem(PROFILES_STORAGE_KEY, JSON.stringify(updatedProfiles));
+          localStorage.setItem(PROFILES_STORAGE_KEY, JSON.stringify(profiles));
       } catch (error) {
           console.error("Failed to save profiles:", error);
       }
-  }, []);
+  }, [profiles]);
+
 
   const updateCurrentPlayer = useCallback((updater: (player: Player) => Player) => {
     if (activeProfileIndex === null) return;
@@ -52,11 +57,10 @@ const App: React.FC = () => {
         const currentPlayer = newProfiles[activeProfileIndex];
         if (currentPlayer) {
             newProfiles[activeProfileIndex] = updater(currentPlayer);
-            saveProfiles(newProfiles);
         }
         return newProfiles;
     });
-  }, [activeProfileIndex, saveProfiles]);
+  }, [activeProfileIndex]);
 
   const addLog = (message: string, color: CombatLog['color']) => {
     setCombatLogs(prev => [...prev, { id: Date.now() + Math.random(), message, color }]);
@@ -66,25 +70,25 @@ const App: React.FC = () => {
     setGameScreen('profile_selection');
   }, []);
 
-  const handleSelectProfileSlot = useCallback((index: number) => {
-    setActiveProfileIndex(index);
+  const handleLoadProfile = useCallback((index: number) => {
     if (profiles[index]) {
+      setActiveProfileIndex(index);
       setGameScreen('main_game');
-    } else {
-      setGameScreen('class_selection');
     }
   }, [profiles]);
+  
+  const handleStartNewGameInSlot = useCallback((index: number) => {
+    setActiveProfileIndex(index);
+    setGameScreen('class_selection');
+  }, []);
 
   const handleDeleteProfile = useCallback((index: number) => {
-    if (window.confirm('Are you sure you want to delete this profile? All progress will be lost.')) {
-      setProfiles(currentProfiles => {
-        const newProfiles = [...currentProfiles];
-        newProfiles[index] = null;
-        saveProfiles(newProfiles);
-        return newProfiles;
-      });
-    }
-  }, [saveProfiles]);
+    setProfiles(currentProfiles => {
+      const newProfiles = [...currentProfiles];
+      newProfiles[index] = null;
+      return newProfiles;
+    });
+  }, []);
 
   const handleClassSelect = useCallback((selectedClass: PlayerClass) => {
     if (activeProfileIndex === null) return;
@@ -130,11 +134,10 @@ const App: React.FC = () => {
     setProfiles(currentProfiles => {
       const newProfiles = [...currentProfiles];
       newProfiles[activeProfileIndex] = finalPlayer;
-      saveProfiles(newProfiles);
       return newProfiles;
     });
     setGameScreen('main_game');
-  }, [activeProfileIndex, saveProfiles]);
+  }, [activeProfileIndex]);
   
   const handleAccountLevelUp = useCallback((currentPlayer: Player): Player => {
       let updatedPlayer = { ...currentPlayer };
@@ -232,7 +235,7 @@ const App: React.FC = () => {
         });
 
         const nextEnemy = generateEnemy(nextFloor);
-        addLog(`You advance to Floor ${nextFloor}. A ${nextEnemy.name} appears!`, 'text-slate-200');
+        addLog(`You advance to Floor ${nextFloor}. A ${nextEnemy.name} appears!`, 'text-yellow-400');
 
         return {
             ...prevRunState,
@@ -476,7 +479,8 @@ const App: React.FC = () => {
       case 'profile_selection':
         return <ProfileScreen 
           profiles={profiles}
-          onSelectProfile={handleSelectProfileSlot}
+          onLoadProfile={handleLoadProfile}
+          onStartNewGame={handleStartNewGameInSlot}
           onDeleteProfile={handleDeleteProfile}
         />;
       case 'class_selection':

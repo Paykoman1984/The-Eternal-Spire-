@@ -1,4 +1,4 @@
-export type GameScreen = 'start' | 'class_selection' | 'main_game';
+export type GameScreen = 'start' | 'class_selection' | 'main_game' | 'combat';
 
 export type ClassName = 'Warrior' | 'Rogue' | 'Mage';
 
@@ -19,13 +19,40 @@ export interface PlayerClass {
 }
 
 export interface Player {
-  level: number;
-  xp: number;
-  xpToNextLevel: number;
+  level: number; // Account level
+  xp: number; // Account XP
+  xpToNextLevel: number; // Account XP to next level
   classInfo: PlayerClass;
-  currentStats: Stats;
-  currentHp: number;
+  currentStats: Stats; // Persistent stats
+  currentHp: number; // HP outside of a run
   eternalShards: number;
 }
 
 export type EquipmentSlot = 'Weapon' | 'Helmet' | 'Armor' | 'Boots' | 'Gloves' | 'Potions';
+
+export interface Enemy {
+  name: string;
+  icon: string;
+  stats: {
+    maxHp: number;
+    hp: number;
+    attack: number;
+    defense: number;
+  };
+  xpReward: number;
+}
+
+export interface RunState {
+  floor: number;
+  runLevel: number;
+  runXp: number;
+  runXpToNextLevel: number;
+  playerCurrentHpInRun: number;
+  currentEnemy: Enemy;
+}
+
+export interface CombatLog {
+    id: number;
+    message: string;
+    color: 'text-green-400' | 'text-red-400' | 'text-yellow-400' | 'text-slate-400';
+}

@@ -5,6 +5,7 @@ import { EQUIPMENT_SLOTS } from '../../constants';
 interface MainGameScreenProps {
   player: Player;
   onReturnToStart: () => void;
+  onEnterSpire: () => void;
 }
 
 const StatBox: React.FC<{ label: string; value: string | number }> = ({ label, value }) => (
@@ -15,13 +16,13 @@ const StatBox: React.FC<{ label: string; value: string | number }> = ({ label, v
 );
 
 const EquipmentSlotDisplay: React.FC<{ slot: EquipmentSlot }> = ({ slot }) => (
-    <div className="w-12 h-12 bg-slate-800/50 border-2 border-dashed border-slate-600 rounded-md flex flex-col items-center justify-center p-0.5 text-center hover:border-yellow-400 hover:bg-slate-800 transition-colors duration-300">
-        <p className="text-[7px] text-slate-500">{slot}</p>
-        <p className="text-base text-slate-600">+</p>
+    <div className="w-16 h-16 bg-slate-800/50 border-2 border-dashed border-slate-600 rounded-md flex flex-col items-center justify-center p-1 text-center hover:border-yellow-400 hover:bg-slate-800 transition-colors duration-300">
+        <p className="text-[10px] text-slate-500">{slot}</p>
+        <p className="text-xl text-slate-600">+</p>
     </div>
 );
 
-const MainGameScreen: React.FC<MainGameScreenProps> = ({ player, onReturnToStart }) => {
+const MainGameScreen: React.FC<MainGameScreenProps> = ({ player, onReturnToStart, onEnterSpire }) => {
   const xpPercentage = (player.xp / player.xpToNextLevel) * 100;
   const hpPercentage = (player.currentHp / player.currentStats.maxHp) * 100;
 
@@ -54,7 +55,7 @@ const MainGameScreen: React.FC<MainGameScreenProps> = ({ player, onReturnToStart
 
         <div className="mb-4">
             <div className="flex justify-between items-center text-xs text-slate-400 mb-1">
-                <span>XP</span>
+                <span>Account XP</span>
                 <span>{player.xp} / {player.xpToNextLevel}</span>
             </div>
             <div className="w-full bg-slate-900 rounded-full h-2.5">
@@ -93,7 +94,7 @@ const MainGameScreen: React.FC<MainGameScreenProps> = ({ player, onReturnToStart
       <div className="lg:w-2/3 flex flex-col">
         <div className="flex-grow bg-slate-800 border border-slate-700 rounded-xl p-4 shadow-lg">
           <h3 className="text-xl font-bold text-slate-300 mb-3 border-b-2 border-slate-700 pb-2">Equipment</h3>
-          <div className="flex flex-wrap gap-2 justify-center">
+          <div className="flex flex-wrap gap-4 justify-center">
             {EQUIPMENT_SLOTS.map((slot) => (
               <EquipmentSlotDisplay key={slot} slot={slot} />
             ))}
@@ -108,6 +109,7 @@ const MainGameScreen: React.FC<MainGameScreenProps> = ({ player, onReturnToStart
             Shop (Coming Soon)
           </button>
           <button
+            onClick={onEnterSpire}
             className="w-full px-6 py-3 bg-yellow-500 text-slate-900 font-bold text-base rounded-lg shadow-lg shadow-yellow-500/20 hover:bg-yellow-400 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-yellow-300"
           >
             Enter Spire

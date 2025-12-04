@@ -1,4 +1,5 @@
-import type { Equipment, Player, GearSlot, Stats } from '../types';
+
+import type { Equipment, Player, GearSlot, Stats, Rarity } from '../types';
 import { GEAR_SLOTS } from '../constants';
 import { ITEM_TEMPLATES, ITEM_PREFIXES, STAT_WEIGHTS } from '../data/items';
 
@@ -7,29 +8,35 @@ const getRandom = <T>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)
 function generateShopItem(playerLevel: number, slot: GearSlot): Equipment {
     const template = getRandom(ITEM_TEMPLATES[slot]);
     
-    // Determine item quality and prefix based on player level
-    const qualityRoll = Math.random();
-    let prefixes: string[];
-    let statBudget: number;
+    // Determine item rarity based on player level + random chance
+    const roll = Math.random() * 100 + (playerLevel * 0.5);
+    
+    let rarity: Rarity;
+    let statBudgetMultiplier: number;
 
-    const baseBudget = 1 + Math.floor(playerLevel / 3);
-
-    // Bias towards sidegrades/downgrades
-    if (qualityRoll < 0.7) { // Common/Sidegrade (70% chance)
-        prefixes = ITEM_PREFIXES.common;
-        statBudget = Math.floor(baseBudget * (0.8 + Math.random() * 0.25)); // 80% - 105% of base
-    } else if (qualityRoll < 0.95) { // Uncommon/Upgrade (25% chance)
-        prefixes = ITEM_PREFIXES.uncommon;
-        statBudget = Math.floor(baseBudget * (1.05 + Math.random() * 0.2)); // 105% - 125% of base
-    } else { // Rare/Major Upgrade (5% chance)
-        prefixes = ITEM_PREFIXES.rare;
-        statBudget = Math.floor(baseBudget * (1.25 + Math.random() * 0.25)); // 125% - 150% of base
+    if (roll < 50) {
+        rarity = 'Common';
+        statBudgetMultiplier = 1;
+    } else if (roll < 80) {
+        rarity = 'Uncommon';
+        statBudgetMultiplier = 1.3;
+    } else if (roll < 95) {
+        rarity = 'Rare';
+        statBudgetMultiplier = 2.0;
+    } else if (roll < 99) {
+        rarity = 'Epic';
+        statBudgetMultiplier = 3.0;
+    } else {
+        rarity = 'Legendary';
+        statBudgetMultiplier = 4.5;
     }
 
-    statBudget = Math.max(1, statBudget); // Ensure at least 1 stat point
-
+    const prefixes = ITEM_PREFIXES[rarity];
     const prefix = getRandom(prefixes);
     const name = `${prefix} ${template.name}`;
+
+    const baseBudget = 1 + Math.floor(playerLevel / 3);
+    const statBudget = Math.max(1, Math.floor(baseBudget * statBudgetMultiplier));
     
     const newStats: Partial<Stats> = {};
     const possibleStats = [...template.possibleStats];
@@ -49,17 +56,24 @@ function generateShopItem(playerLevel: number, slot: GearSlot): Equipment {
     // Calculate item power for cost
     const itemPower = Object.entries(newStats).reduce((sum, [stat, value]) => {
         const weight = STAT_WEIGHTS[stat as keyof Stats] || 1;
-        // value / weight normalizes the stat points, then we multiply by power factors
         return sum + (value / weight) * (5 + playerLevel);
     }, 0);
 
-    const cost = Math.floor(itemPower * 5);
+    // Rarity multiplier for cost
+    let costMultiplier = 1;
+    if (rarity === 'Uncommon') costMultiplier = 1.5;
+    if (rarity === 'Rare') costMultiplier = 3;
+    if (rarity === 'Epic') costMultiplier = 6;
+    if (rarity === 'Legendary') costMultiplier = 10;
+
+    const cost = Math.floor(itemPower * 5 * costMultiplier);
 
     const finalItem: Equipment = {
         ...template,
         name,
         stats: newStats,
-        cost: Math.round(cost / 10) * 10, // Round to nearest 10
+        rarity,
+        cost: Math.round(cost / 10) * 10,
     };
 
     return finalItem;

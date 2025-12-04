@@ -23,11 +23,14 @@ export interface PlayerClass {
 export type GearSlot = 'Weapon' | 'Helmet' | 'Armor' | 'Boots' | 'Gloves';
 export type EquipmentSlot = GearSlot | 'Potions';
 
+export type Rarity = 'Common' | 'Uncommon' | 'Rare' | 'Epic' | 'Legendary';
+
 export interface Equipment {
   name: string;
   slot: GearSlot;
   icon: string;
   stats: Partial<Stats>;
+  rarity: Rarity;
   cost?: number;
 }
 

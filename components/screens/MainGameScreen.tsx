@@ -2,6 +2,7 @@
 import React from 'react';
 import type { Player, EquipmentSlot, Equipment } from '../../types';
 import { EQUIPMENT_SLOTS } from '../../constants';
+import { RARITY_COLORS } from '../../data/items';
 
 interface MainGameScreenProps {
   player: Player;
@@ -31,9 +32,11 @@ const EquipmentSlotDisplay: React.FC<{ slot: EquipmentSlot; item: Equipment | un
             );
         }
         if (item) {
+            const rarityColor = RARITY_COLORS[item.rarity || 'Common'];
             return (
                 <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-opacity duration-300 bg-slate-900 border border-[#D6721C] rounded-md shadow-lg p-2 text-xs z-10">
-                    <p className="font-bold text-[#D6721C]">{item.name}</p>
+                    <p className={`font-bold ${rarityColor}`}>{item.name}</p>
+                    <p className="text-[10px] text-slate-400 mb-1">{item.rarity || 'Common'}</p>
                     {Object.keys(item.stats).length > 0 && (
                         <div className="mt-1 border-t border-slate-600 pt-1 space-y-0.5">
                             {Object.entries(item.stats).map(([stat, value]) => (
@@ -50,6 +53,8 @@ const EquipmentSlotDisplay: React.FC<{ slot: EquipmentSlot; item: Equipment | un
         return null;
     };
 
+    const nameColor = item ? (RARITY_COLORS[item.rarity || 'Common'] || 'text-[#D6721C]') : 'text-[#D6721C]';
+
     return (
         <div className="relative group">
             {slot === 'Potions' ? (
@@ -60,7 +65,7 @@ const EquipmentSlotDisplay: React.FC<{ slot: EquipmentSlot; item: Equipment | un
             ) : item ? (
                 <div className="w-12 h-12 bg-slate-800 border-2 border-slate-600 rounded-md flex flex-col items-center justify-center p-1 text-center">
                     <p className="text-lg">{item.icon}</p>
-                    <p className="text-[9px] text-[#D6721C] truncate w-full px-0.5">{item.name}</p>
+                    <p className={`text-[9px] truncate w-full px-0.5 ${nameColor}`}>{item.name}</p>
                 </div>
             ) : (
                 <div className="w-12 h-12 bg-slate-800/50 border-2 border-dashed border-slate-600 rounded-md flex flex-col items-center justify-center p-1 text-center hover:border-[#D6721C] hover:bg-slate-800 transition-colors duration-300">
@@ -79,7 +84,7 @@ const MainGameScreen: React.FC<MainGameScreenProps> = ({ player, onExitToProfile
   const hasAccountBuffs = Object.keys(player.accountBuffs).length > 0;
 
   return (
-    <div className="relative flex flex-col lg:flex-row gap-3 animate-fadeIn min-h-screen w-full p-4">
+    <div className="relative flex flex-col gap-3 animate-fadeIn h-full w-full p-4">
       
       <button
         onClick={onExitToProfiles}
@@ -90,7 +95,7 @@ const MainGameScreen: React.FC<MainGameScreenProps> = ({ player, onExitToProfile
       </button>
 
       {/* Left Panel: Character Info */}
-      <div className="lg:w-1/3 bg-slate-800 border border-slate-700 rounded-xl p-2.5 flex flex-col shadow-lg">
+      <div className="bg-slate-800 border border-slate-700 rounded-xl p-2.5 flex flex-col shadow-lg flex-shrink-0">
         <div className="flex items-center mb-2">
             <div className="text-3xl mr-2">{player.classInfo.icon}</div>
             <div>
@@ -146,7 +151,7 @@ const MainGameScreen: React.FC<MainGameScreenProps> = ({ player, onExitToProfile
         </div>
       </div>
 
-      <div className="lg:w-2/3 flex flex-col flex-1">
+      <div className="flex flex-col flex-1 min-h-0">
         <div className="bg-slate-800 border border-slate-700 rounded-xl p-2.5 shadow-lg mb-auto">
           <h3 className="text-sm font-bold text-[#D6721C] mb-2 border-b-2 border-slate-700 pb-1">Inventory</h3>
           <div className="flex flex-wrap gap-1.5 justify-center">
@@ -161,7 +166,7 @@ const MainGameScreen: React.FC<MainGameScreenProps> = ({ player, onExitToProfile
           </div>
         </div>
 
-        <div className="grid grid-cols-4 gap-2 mt-2">
+        <div className="grid grid-cols-4 gap-2 mt-auto">
           <button
             onClick={onEnterShop}
             className="flex items-center justify-center w-full px-2 py-1.5 bg-purple-700 text-white font-bold text-xs rounded-lg shadow-md hover:bg-purple-600 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500"

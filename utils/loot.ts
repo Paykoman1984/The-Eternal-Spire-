@@ -1,15 +1,15 @@
-import type { Equipment, GearSlot, Stats } from '../types';
+
+import type { Equipment, GearSlot, Stats, Rarity } from '../types';
 import { GEAR_SLOTS } from '../constants';
 import { ITEM_TEMPLATES, ITEM_PREFIXES, STAT_WEIGHTS } from '../data/items';
 
 const SHARD_DROP_CHANCE = 0.8;
 const POTION_DROP_CHANCE = 0.15;
-const EQUIPMENT_DROP_CHANCE = 0.1; // Reduced, but we'll roll for it separately
 
 // A function to get a random item from an array
 const getRandom = <T>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
 
-export function generateLoot(floor: number): {
+export function generateLoot(floor: number, playerLevel: number): {
   shards: number;
   potions: number;
   equipment: Equipment | null;
@@ -28,33 +28,58 @@ export function generateLoot(floor: number): {
     potions = 1;
   }
 
+  // --- Dynamic Drop Rate Calculation ---
+  // Base chance is 25% at level 1.
+  // It decays by 0.5% per player level.
+  // Minimum chance is hard-capped at 5%.
+  const baseDropChance = 0.25;
+  const decayPerLevel = 0.005;
+  const minDropChance = 0.05;
+  
+  let equipmentDropChance = Math.max(minDropChance, baseDropChance - (playerLevel * decayPerLevel));
+  
+  // Slight boost to drop rate for Boss floors
+  if (floor % 10 === 0) equipmentDropChance += 0.2;
+
+
   // Roll for equipment
-  if (Math.random() < EQUIPMENT_DROP_CHANCE) {
+  if (Math.random() < equipmentDropChance) {
     // Generate a piece of equipment
     const slot = getRandom(GEAR_SLOTS);
     const template = getRandom(ITEM_TEMPLATES[slot]);
     
-    // Determine item quality and prefix
-    const qualityRoll = Math.random();
-    let prefixes: string[];
-    let statBudget: number;
-
-    if (qualityRoll < 0.6) { // Common
-        prefixes = ITEM_PREFIXES.common;
-        statBudget = 1 + Math.floor(floor / 5);
-    } else if (qualityRoll < 0.9) { // Uncommon
-        prefixes = ITEM_PREFIXES.uncommon;
-        statBudget = 2 + Math.floor(floor / 4);
-    } else if (qualityRoll < 0.98) { // Rare
-        prefixes = ITEM_PREFIXES.rare;
-        statBudget = 3 + Math.floor(floor / 3);
-    } else { // Epic
-        prefixes = ITEM_PREFIXES.epic;
-        statBudget = 5 + Math.floor(floor / 2);
-    }
+    // --- Dynamic Rarity Calculation ---
+    // Roll a value between 0 and 100
+    // Add a bonus based on the floor (deeper floors = better rolls)
+    const roll = (Math.random() * 100) + (floor * 0.5);
     
+    let rarity: Rarity;
+    let statBudgetMultiplier: number;
+
+    if (roll < 60) {
+        rarity = 'Common';
+        statBudgetMultiplier = 1;
+    } else if (roll < 85) {
+        rarity = 'Uncommon';
+        statBudgetMultiplier = 1.5;
+    } else if (roll < 95) {
+        rarity = 'Rare';
+        statBudgetMultiplier = 2.5;
+    } else if (roll < 99) {
+        rarity = 'Epic';
+        statBudgetMultiplier = 4;
+    } else {
+        rarity = 'Legendary';
+        statBudgetMultiplier = 6;
+    }
+
+    const prefixes = ITEM_PREFIXES[rarity];
     const prefix = getRandom(prefixes);
     const name = `${prefix} ${template.name}`;
+    
+    // Base stat budget scales slightly with floor + rarity multiplier
+    const baseBudget = 1 + Math.floor(floor / 5);
+    const statBudget = Math.max(1, Math.floor(baseBudget * statBudgetMultiplier));
     
     const newStats: Partial<Stats> = {};
     const possibleStats = [...template.possibleStats];
@@ -76,7 +101,8 @@ export function generateLoot(floor: number): {
     equipment = {
         ...template,
         name,
-        stats: newStats
+        stats: newStats,
+        rarity
     };
   }
 

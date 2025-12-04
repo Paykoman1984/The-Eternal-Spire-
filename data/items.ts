@@ -1,6 +1,7 @@
-import type { Equipment, Stats, GearSlot } from '../types';
 
-type ItemTemplate = Omit<Equipment, 'name' | 'stats'> & {
+import type { Equipment, Stats, GearSlot, Rarity } from '../types';
+
+type ItemTemplate = Omit<Equipment, 'name' | 'stats' | 'rarity'> & {
     name: string;
     possibleStats: (keyof Stats)[];
 };
@@ -31,11 +32,20 @@ export const ITEM_TEMPLATES: Record<GearSlot, ItemTemplate[]> = {
     ],
 };
 
-export const ITEM_PREFIXES = {
-    common: ['Common', 'Worn', 'Simple'],
-    uncommon: ['Sturdy', 'Enhanced', 'Adept'],
-    rare: ['Superior', 'Ornate', 'Masterwork'],
-    epic: ['Legendary', 'Godly', 'Eternal'],
+export const ITEM_PREFIXES: Record<Rarity, string[]> = {
+    Common: ['Common', 'Worn', 'Simple', 'Old', 'Dusty'],
+    Uncommon: ['Sturdy', 'Enhanced', 'Adept', 'Polished', 'Sharp'],
+    Rare: ['Superior', 'Ornate', 'Masterwork', 'Gleaming', 'Fierce'],
+    Epic: ['Legendary', 'Godly', 'Eternal', 'Radiant', 'Chaos'],
+    Legendary: ['Mythical', 'Divine', 'Ascended', 'Primordial', 'Infinite'],
+};
+
+export const RARITY_COLORS: Record<Rarity, string> = {
+    Common: 'text-slate-300',
+    Uncommon: 'text-green-400',
+    Rare: 'text-blue-400',
+    Epic: 'text-purple-400',
+    Legendary: 'text-[#D6721C]', // Orange
 };
 
 export const STAT_WEIGHTS: Record<keyof Stats, number> = {

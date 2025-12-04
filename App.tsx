@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback, useEffect } from 'react';
 import type { GameScreen, Player, PlayerClass, RunState, CombatLog, Equipment, GearSlot, Achievement } from './types';
 import { generateEnemy } from './utils/combat';
@@ -130,11 +131,11 @@ const App: React.FC = () => {
     let startingWeapon: Equipment | null = null;
 
     if (selectedClass.name === 'Warrior') {
-        startingWeapon = { name: 'Dusty Sword', slot: 'Weapon', icon: '⚔️', stats: { str: 1 } };
+        startingWeapon = { name: 'Dusty Sword', slot: 'Weapon', icon: '⚔️', stats: { str: 1 }, rarity: 'Common' };
     } else if (selectedClass.name === 'Rogue') {
-        startingWeapon = { name: 'Rusty Dagger', slot: 'Weapon', icon: '🔪', stats: { dex: 1 } };
+        startingWeapon = { name: 'Rusty Dagger', slot: 'Weapon', icon: '🔪', stats: { dex: 1 }, rarity: 'Common' };
     } else if (selectedClass.name === 'Mage') {
-        startingWeapon = { name: 'Rusty Staff', slot: 'Weapon', icon: '🪄', stats: { int: 1 } };
+        startingWeapon = { name: 'Rusty Staff', slot: 'Weapon', icon: '🪄', stats: { int: 1 }, rarity: 'Common' };
     }
     
     if (startingWeapon) {
@@ -209,10 +210,10 @@ const App: React.FC = () => {
   const handleCloseSummary = useCallback(() => {
     if (!runState || activeProfileIndex === null) return;
 
+    // XP is applied immediately during combat now.
+    // Here we just ensure HP is restored for the hub view.
     updateCurrentPlayer(player => {
-        let updatedPlayer = { ...player, xp: player.xp + runState.runXp };
-        updatedPlayer.totalAccumulatedXp = (updatedPlayer.totalAccumulatedXp || 0) + runState.runXp;
-        updatedPlayer = handleAccountLevelUp(updatedPlayer);
+        let updatedPlayer = { ...player };
         updatedPlayer.currentHp = updatedPlayer.currentStats.maxHp;
         return updatedPlayer;
     });
@@ -220,7 +221,7 @@ const App: React.FC = () => {
     setRunState(null);
     setCombatLogs([]);
     setGameScreen('main_game');
-  }, [runState, activeProfileIndex, handleAccountLevelUp, updateCurrentPlayer]);
+  }, [runState, activeProfileIndex, updateCurrentPlayer]);
 
   const updateAchievementProgress = useCallback((playerState: Player, runState: RunState, type: 'slay' | 'reach_floor', value: string | number): Player => {
       const newPlayer = { ...playerState };
@@ -322,57 +323,71 @@ const App: React.FC = () => {
       newRunState.enemiesKilled += 1;
       
       // Calculate loot *before* updating state to avoid race conditions
-      const loot = generateLoot(newRunState.floor);
+      // PASS PLAYER LEVEL FOR DYNAMIC DROP RATES
+      const loot = generateLoot(newRunState.floor, activePlayer.level);
+      
       if (loot.equipment) {
           lootDropped = loot.equipment;
           newRunState.pendingLoot = loot.equipment;
           logs.push({ message: `The enemy dropped a piece of equipment: ${loot.equipment.name}!`, color: 'text-[#D6721C]' });
       }
 
-      updateCurrentPlayer(player => {
-          let playerAfterUpdate = { ...player };
+      // --- Prepare Updated Player State Immediately ---
+      let nextPlayer = { ...activePlayer };
+
+      // 1. Achievements & Stats
+      nextPlayer.totalEnemiesKilled = (nextPlayer.totalEnemiesKilled || 0) + 1;
+      nextPlayer = updateAchievementProgress(nextPlayer, newRunState, 'slay', newRunState.currentEnemy.id);
+
+      // 2. XP & Account Level Logic
+      const xpGained = newRunState.currentEnemy.xpReward;
+      newRunState.runXp += xpGained; // Keep track for run summary
+      nextPlayer.xp += xpGained;
+      nextPlayer.totalAccumulatedXp = (nextPlayer.totalAccumulatedXp || 0) + xpGained;
+      logs.push({ message: `You gained ${xpGained} XP.`, color: 'text-[#D6721C]' });
+
+      const oldMaxHpAccount = nextPlayer.currentStats.maxHp;
+      nextPlayer = handleAccountLevelUp(nextPlayer); // Check for Account Level Up immediately
+      const newMaxHpAccount = nextPlayer.currentStats.maxHp;
+      const hpDiffAccount = newMaxHpAccount - oldMaxHpAccount;
+
+      if (nextPlayer.level > activePlayer.level) {
+          logs.push({ message: `Account Level Up! You are now level ${nextPlayer.level}.`, color: 'text-[#D6721C]' });
+      }
+      if (hpDiffAccount > 0) {
+          newRunState.playerCurrentHpInRun += hpDiffAccount;
+          logs.push({ message: `Max HP increased by ${hpDiffAccount} from Account Level Up.`, color: 'text-[#D6721C]' });
+      }
+
+      // 3. Run Level Logic (Only restores HP now)
+      if (newRunState.runXp >= newRunState.runXpToNextLevel) {
+          didPlayerLevelUpInRun = true;
+          newRunState.runXp -= newRunState.runXpToNextLevel;
+          newRunState.runLevel += 1;
+          newRunState.runXpToNextLevel = Math.floor(newRunState.runXpToNextLevel * 1.8);
           
-          playerAfterUpdate.totalEnemiesKilled = (playerAfterUpdate.totalEnemiesKilled || 0) + 1;
-          playerAfterUpdate = updateAchievementProgress(playerAfterUpdate, newRunState, 'slay', newRunState.currentEnemy.id);
+          // No base stats increase here. Only HP restore.
+          newRunState.playerCurrentHpInRun = nextPlayer.currentStats.maxHp; 
+          logs.push({ message: `You leveled up to Run Level ${newRunState.runLevel}! HP Restored!`, color: 'text-[#D6721C]' });
+      }
 
-          const xpGained = newRunState.currentEnemy.xpReward;
-          newRunState.runXp += xpGained;
-          
-          logs.push({ message: `You gained ${xpGained} XP.`, color: 'text-[#D6721C]' });
-
-          if (newRunState.runXp >= newRunState.runXpToNextLevel) {
-              didPlayerLevelUpInRun = true;
-              newRunState.runXp -= newRunState.runXpToNextLevel;
-              newRunState.runLevel += 1;
-              newRunState.runXpToNextLevel = Math.floor(newRunState.runXpToNextLevel * 1.8);
-              
-              playerAfterUpdate.baseStats.maxHp += 5;
-              playerAfterUpdate.baseStats.str += 1;
-              playerAfterUpdate.baseStats.dex += 1;
-              playerAfterUpdate.baseStats.int += 1;
-
-              playerAfterUpdate = recalculatePlayerStats(playerAfterUpdate);
-
-              newRunState.playerCurrentHpInRun = playerAfterUpdate.currentStats.maxHp; 
-              logs.push({ message: `You leveled up to Run Level ${newRunState.runLevel}! Your stats permanently increase and HP is restored.`, color: 'text-[#D6721C]' });
+      // 4. Apply Loot
+      if (loot.shards > 0) {
+          nextPlayer.eternalShards += loot.shards;
+          nextPlayer.totalLifetimeShards = (nextPlayer.totalLifetimeShards || 0) + loot.shards;
+          newRunState.shardsEarned += loot.shards;
+          logs.push({ message: `The enemy dropped ${loot.shards} Eternal Shards.`, color: 'text-purple-400' });
+      }
+      if (loot.potions > 0) {
+          const potionsGained = Math.min(loot.potions, 5 - nextPlayer.potionCount);
+          if (potionsGained > 0) {
+              nextPlayer.potionCount += potionsGained;
+              logs.push({ message: `You found a Health Potion! You now have ${nextPlayer.potionCount}.`, color: 'text-[#D6721C]' });
           }
+      }
 
-          if (loot.shards > 0) {
-              playerAfterUpdate.eternalShards += loot.shards;
-              playerAfterUpdate.totalLifetimeShards = (playerAfterUpdate.totalLifetimeShards || 0) + loot.shards;
-              newRunState.shardsEarned += loot.shards;
-              logs.push({ message: `The enemy dropped ${loot.shards} Eternal Shards.`, color: 'text-purple-400' });
-          }
-          if (loot.potions > 0) {
-              const potionsGained = Math.min(loot.potions, 5 - playerAfterUpdate.potionCount);
-              if (potionsGained > 0) {
-                  playerAfterUpdate.potionCount += potionsGained;
-                  logs.push({ message: `You found a Health Potion! You now have ${playerAfterUpdate.potionCount}.`, color: 'text-[#D6721C]' });
-              }
-          }
-
-          return playerAfterUpdate;
-      });
+      // Commit player updates immediately
+      updateCurrentPlayer(() => nextPlayer);
       
       // Only advance automatically if NO equipment dropped
       if (!lootDropped) {
@@ -384,7 +399,8 @@ const App: React.FC = () => {
       if (Math.random() * 100 < activePlayer.currentStats.evasion) {
           logs.push({ message: `You dodged the ${newRunState.currentEnemy.name}'s attack!`, color: 'text-red-400' });
       } else {
-          const playerDefense = didPlayerLevelUpInRun ? (profiles[activeProfileIndex!]!.currentStats.defense) : activePlayer.currentStats.defense;
+          // Use current player stats for defense
+          const playerDefense = activePlayer.currentStats.defense;
           let enemyDamage = Math.max(1, newRunState.currentEnemy.stats.attack - playerDefense);
           enemyDamage = Math.floor(enemyDamage);
           newRunState.playerCurrentHpInRun = Math.max(0, newRunState.playerCurrentHpInRun - enemyDamage);
@@ -405,7 +421,7 @@ const App: React.FC = () => {
       setTimeout(() => setGameScreen('run_summary'), 2000);
     }
   
-  }, [activeProfileIndex, profiles, runState, advanceToNextFloor, updateAchievementProgress, updateCurrentPlayer]);
+  }, [activeProfileIndex, profiles, runState, advanceToNextFloor, updateAchievementProgress, updateCurrentPlayer, handleAccountLevelUp]);
 
   const handleLootDecision = useCallback((equip: boolean) => {
     if (!runState || !runState.pendingLoot) return;

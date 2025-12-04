@@ -1,5 +1,7 @@
+
 import React, { useRef, useEffect } from 'react';
 import type { Player, RunState, CombatLog, Equipment, Stats } from '../../types';
+import { RARITY_COLORS } from '../../data/items';
 
 interface CombatScreenProps {
   player: Player;
@@ -51,29 +53,36 @@ const StatComparison: React.FC<{ label: string, oldValue: number, newValue: numb
 };
 
 
-const ItemCard: React.FC<{ title: string, item: Equipment | null }> = ({ title, item }) => (
-    <div className="bg-slate-900/80 border border-slate-700 rounded-lg p-2 w-full">
-        <h4 className="text-xs font-bold text-slate-400 border-b border-slate-700 pb-1 mb-1.5">{title}</h4>
-        {item ? (
-            <>
-                <div className="flex items-center mb-1.5">
-                    <span className="text-2xl mr-2">{item.icon}</span>
-                    <span className="font-bold text-[#D6721C] text-sm">{item.name}</span>
-                </div>
-                <div className="space-y-0.5">
-                    {Object.entries(item.stats).map(([stat, value]) => (
-                        <div key={stat} className="flex justify-between text-xs text-slate-300">
-                            <span>{stat.toUpperCase()}</span>
-                            <span>+{value}</span>
+const ItemCard: React.FC<{ title: string, item: Equipment | null }> = ({ title, item }) => {
+    const rarityColor = item ? (RARITY_COLORS[item.rarity || 'Common'] || 'text-[#D6721C]') : 'text-[#D6721C]';
+
+    return (
+        <div className="bg-slate-900/80 border border-slate-700 rounded-lg p-2 w-full">
+            <h4 className="text-xs font-bold text-slate-400 border-b border-slate-700 pb-1 mb-1.5">{title}</h4>
+            {item ? (
+                <>
+                    <div className="flex items-center mb-1.5">
+                        <span className="text-2xl mr-2">{item.icon}</span>
+                        <div className="flex flex-col">
+                            <span className={`font-bold text-sm ${rarityColor}`}>{item.name}</span>
+                            <span className="text-[10px] text-slate-500">{item.rarity || 'Common'}</span>
                         </div>
-                    ))}
-                </div>
-            </>
-        ) : (
-            <p className="text-xs text-slate-500">None</p>
-        )}
-    </div>
-);
+                    </div>
+                    <div className="space-y-0.5">
+                        {Object.entries(item.stats).map(([stat, value]) => (
+                            <div key={stat} className="flex justify-between text-xs text-slate-300">
+                                <span>{stat.toUpperCase()}</span>
+                                <span>+{value}</span>
+                            </div>
+                        ))}
+                    </div>
+                </>
+            ) : (
+                <p className="text-xs text-slate-500">None</p>
+            )}
+        </div>
+    );
+};
 
 
 const LootDecision: React.FC<{
@@ -84,7 +93,7 @@ const LootDecision: React.FC<{
     const allStats = Array.from(new Set([...Object.keys(newItem.stats), ...Object.keys(oldItem?.stats ?? {})])) as (keyof Stats)[];
 
     return (
-        <div className="absolute inset-0 bg-slate-900/80 z-20 flex items-start justify-center animate-fadeIn p-4 pt-8">
+        <div className="absolute inset-0 bg-slate-900/90 z-50 flex items-center justify-center animate-fadeIn p-4">
             <div className="bg-slate-800 border-2 border-[#D6721C] rounded-xl p-3 max-w-sm w-full shadow-2xl">
                 <h3 className="text-base text-center font-bold text-[#D6721C] mb-2">New Item Dropped!</h3>
                 <div className="flex gap-2 mb-2">
@@ -145,8 +154,8 @@ const CombatScreen: React.FC<CombatScreenProps> = ({ player, runState, logs, onA
   };
 
   return (
-    <div className="relative flex flex-col justify-center gap-2 animate-fadeIn h-screen w-full p-4 overflow-hidden">
-      <div className="w-full max-w-3xl mx-auto flex flex-col h-full">
+    <div className="fixed inset-0 flex flex-col justify-center items-center p-4 z-10 animate-fadeIn">
+      <div className="w-full max-w-3xl h-full flex flex-col gap-2 relative">
         {isLootPending && runState.pendingLoot && (
            <LootDecision 
               newItem={runState.pendingLoot}
@@ -154,16 +163,23 @@ const CombatScreen: React.FC<CombatScreenProps> = ({ player, runState, logs, onA
               onLootDecision={onLootDecision}
            />
         )}
-        <div className="bg-slate-800 border border-slate-700 rounded-xl p-2 shadow-lg text-center mb-2 flex-shrink-0">
+        
+        {/* Header Information */}
+        <div className="bg-slate-800 border border-slate-700 rounded-xl p-2 shadow-lg text-center flex-shrink-0">
           <h2 className="text-base font-bold text-[#D6721C]">Floor {runState.floor}</h2>
-          <p className="text-xs text-slate-400">Run Lvl: {runState.runLevel} | Shards: {runState.shardsEarned}</p>
+          <div className="flex justify-center gap-3 text-xs text-slate-400">
+             <span>Acc Lvl: <span className="text-slate-200 font-bold">{player.level}</span></span>
+             <span>Run Lvl: <span className="text-slate-200 font-bold">{runState.runLevel}</span></span>
+             <span>Shards: <span className="text-purple-400 font-bold">{runState.shardsEarned}</span></span>
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-2 flex-shrink-0">
+        {/* Combat Stats Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 flex-shrink-0">
           <div className="bg-slate-800 border border-slate-700 rounded-xl p-2 shadow-lg">
             <div className="flex items-center mb-1.5">
               <span className="text-2xl mr-2">{player.classInfo.icon}</span>
-              <h3 className="text-sm font-bold text-slate-200">{player.classInfo.name}</h3>
+              <h3 className="text-sm font-bold text-slate-200">{player.name}</h3>
             </div>
             <HealthBar current={runState.playerCurrentHpInRun} max={player.currentStats.maxHp} label="HP" />
             <div className="grid grid-cols-4 gap-1 mt-1.5 pt-1.5 border-t border-slate-700">
@@ -207,8 +223,9 @@ const CombatScreen: React.FC<CombatScreenProps> = ({ player, runState, logs, onA
           </div>
         </div>
 
-        <div className="bg-slate-800 border border-slate-700 rounded-xl p-2 shadow-lg flex-1 min-h-[6rem] flex flex-col mb-2 min-h-0">
-          <h3 className="text-xs font-bold text-slate-300 mb-1 border-b border-slate-700 pb-1">Combat Log</h3>
+        {/* Combat Log - Flexible Height */}
+        <div className="bg-slate-800 border border-slate-700 rounded-xl p-2 shadow-lg flex-1 min-h-0 flex flex-col">
+          <h3 className="text-xs font-bold text-slate-300 mb-1 border-b border-slate-700 pb-1 flex-shrink-0">Combat Log</h3>
           <div ref={logContainerRef} className="flex-grow overflow-y-auto pr-2 no-scrollbar">
             {logs.map((log) => (
               <p key={log.id} className={`text-xs mb-0.5 ${log.color}`}>
@@ -218,25 +235,26 @@ const CombatScreen: React.FC<CombatScreenProps> = ({ player, runState, logs, onA
           </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-2 mt-auto flex-shrink-0">
+        {/* Action Buttons - Fixed at Bottom */}
+        <div className="grid grid-cols-3 gap-2 flex-shrink-0">
           <button
             onClick={handleAttackClick}
             disabled={playerDead || isPostCombatPhase}
-            className="w-full px-4 py-1.5 bg-red-700 text-white font-bold text-sm rounded-lg shadow-md hover:bg-red-600 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed"
+            className="w-full px-4 py-2.5 bg-red-700 text-white font-bold text-sm rounded-lg shadow-md hover:bg-red-600 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed"
           >
             Attack
           </button>
           <button
             onClick={onUsePotion}
             disabled={playerDead || isPostCombatPhase || player.potionCount <= 0 || runState.playerCurrentHpInRun >= player.currentStats.maxHp}
-            className="w-full px-4 py-1.5 bg-blue-700 text-white font-bold text-sm rounded-lg shadow-md hover:bg-blue-600 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed"
+            className="w-full px-4 py-2.5 bg-blue-700 text-white font-bold text-sm rounded-lg shadow-md hover:bg-blue-600 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed"
           >
             Potion ({player.potionCount})
           </button>
           <button
             onClick={onFlee}
             disabled={playerDead || isPostCombatPhase}
-            className="w-full px-4 py-1.5 bg-slate-600 text-slate-200 font-bold text-sm rounded-lg hover:bg-slate-500 transition-colors focus:outline-none focus:ring-2 focus:ring-slate-400 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed"
+            className="w-full px-4 py-2.5 bg-slate-600 text-slate-200 font-bold text-sm rounded-lg hover:bg-slate-500 transition-colors focus:outline-none focus:ring-2 focus:ring-slate-400 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed"
           >
             Flee
           </button>

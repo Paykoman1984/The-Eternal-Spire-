@@ -14,6 +14,7 @@ import AchievementsScreen from './components/screens/AchievementsScreen';
 import ProfileScreen from './components/screens/ProfileScreen';
 import RunSummaryScreen from './components/screens/RunSummaryScreen';
 import StatsScreen from './components/screens/StatsScreen';
+import NameSelectionScreen from './components/screens/NameSelectionScreen';
 
 const PROFILES_STORAGE_KEY = 'eternal_spire_profiles';
 
@@ -28,7 +29,13 @@ const App: React.FC = () => {
         if (savedProfiles) {
             const parsedProfiles = JSON.parse(savedProfiles);
             if (Array.isArray(parsedProfiles) && (parsedProfiles.length === 2)) {
-                return parsedProfiles;
+                // Migration: Ensure name property exists for old profiles
+                return parsedProfiles.map((p: any) => {
+                    if (p && !p.name) {
+                        return { ...p, name: p.classInfo.name };
+                    }
+                    return p;
+                });
             }
         }
     } catch (error) {
@@ -38,6 +45,7 @@ const App: React.FC = () => {
   });
 
   const [activeProfileIndex, setActiveProfileIndex] = useState<number | null>(null);
+  const [newGameName, setNewGameName] = useState<string>(''); // Temp state for name creation
   const [runState, setRunState] = useState<RunState | null>(null);
   const [combatLogs, setCombatLogs] = useState<CombatLog[]>([]);
 
@@ -91,7 +99,18 @@ const App: React.FC = () => {
   
   const handleStartNewGameInSlot = useCallback((index: number) => {
     setActiveProfileIndex(index);
+    setNewGameName(''); // Reset name
+    setGameScreen('name_selection');
+  }, []);
+
+  const handleNameConfirm = useCallback((name: string) => {
+    setNewGameName(name);
     setGameScreen('class_selection');
+  }, []);
+
+  const handleCancelNameSelection = useCallback(() => {
+      setActiveProfileIndex(null);
+      setGameScreen('profile_selection');
   }, []);
 
   const handleDeleteProfile = useCallback((index: number) => {
@@ -123,6 +142,7 @@ const App: React.FC = () => {
     }
 
     const initialPlayer: Player = {
+      name: newGameName || selectedClass.name, // Use custom name or fallback to class name
       level: 1,
       xp: 0,
       xpToNextLevel: 100,
@@ -156,7 +176,7 @@ const App: React.FC = () => {
       return newProfiles;
     });
     setGameScreen('main_game');
-  }, [activeProfileIndex]);
+  }, [activeProfileIndex, newGameName]);
   
   const handleAccountLevelUp = useCallback((currentPlayer: Player): Player => {
       let updatedPlayer = { ...currentPlayer };
@@ -548,6 +568,11 @@ const App: React.FC = () => {
           onLoadProfile={handleLoadProfile}
           onStartNewGame={handleStartNewGameInSlot}
           onDeleteProfile={handleDeleteProfile}
+        />;
+      case 'name_selection':
+        return <NameSelectionScreen
+            onNameConfirm={handleNameConfirm}
+            onCancel={handleCancelNameSelection}
         />;
       case 'class_selection':
         return <ClassSelectionScreen onClassSelect={handleClassSelect} />;

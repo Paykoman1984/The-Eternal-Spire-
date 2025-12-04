@@ -35,8 +35,8 @@ const ProfileSlot: React.FC<{
         <div className="flex items-center mb-1">
             <span className="text-2xl mr-2">{profile.classInfo.icon}</span>
             <div>
-                <h3 className="text-base font-bold text-[#D6721C]">{profile.classInfo.name}</h3>
-                <p className="text-sm text-slate-300">Level {profile.level}</p>
+                <h3 className="text-base font-bold text-[#D6721C]">{profile.name}</h3>
+                <p className="text-sm text-slate-300">Level {profile.level} {profile.classInfo.name}</p>
             </div>
         </div>
         <div className="text-xs text-slate-400 mt-auto">
@@ -88,7 +88,7 @@ const ProfileSlot: React.FC<{
 const ProfileScreen: React.FC<ProfileScreenProps> = ({ profiles, onLoadProfile, onStartNewGame, onDeleteProfile }) => {
   
   return (
-    <div className="animate-fadeIn flex flex-col items-center justify-center min-h-screen p-4">
+    <div className="animate-fadeIn flex flex-col items-center justify-center min-h-screen p-4 w-full h-full">
       <div className="w-full max-w-xl">
         <h2 className="text-lg md:text-xl font-bold text-center mb-2 text-[#D6721C]">
           Select Profile

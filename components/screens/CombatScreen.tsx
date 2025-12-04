@@ -145,8 +145,8 @@ const CombatScreen: React.FC<CombatScreenProps> = ({ player, runState, logs, onA
   };
 
   return (
-    <div className="relative flex flex-col justify-center gap-2 animate-fadeIn min-h-screen w-full p-4">
-      <div className="w-full max-w-3xl mx-auto flex flex-col flex-grow">
+    <div className="relative flex flex-col justify-center gap-2 animate-fadeIn h-screen w-full p-4 overflow-hidden">
+      <div className="w-full max-w-3xl mx-auto flex flex-col h-full">
         {isLootPending && runState.pendingLoot && (
            <LootDecision 
               newItem={runState.pendingLoot}
@@ -154,12 +154,12 @@ const CombatScreen: React.FC<CombatScreenProps> = ({ player, runState, logs, onA
               onLootDecision={onLootDecision}
            />
         )}
-        <div className="bg-slate-800 border border-slate-700 rounded-xl p-2 shadow-lg text-center mb-2">
+        <div className="bg-slate-800 border border-slate-700 rounded-xl p-2 shadow-lg text-center mb-2 flex-shrink-0">
           <h2 className="text-base font-bold text-[#D6721C]">Floor {runState.floor}</h2>
           <p className="text-xs text-slate-400">Run Lvl: {runState.runLevel} | Shards: {runState.shardsEarned}</p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-2">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-2 flex-shrink-0">
           <div className="bg-slate-800 border border-slate-700 rounded-xl p-2 shadow-lg">
             <div className="flex items-center mb-1.5">
               <span className="text-2xl mr-2">{player.classInfo.icon}</span>
@@ -207,7 +207,7 @@ const CombatScreen: React.FC<CombatScreenProps> = ({ player, runState, logs, onA
           </div>
         </div>
 
-        <div className="bg-slate-800 border border-slate-700 rounded-xl p-2 shadow-lg flex-1 min-h-[6rem] flex flex-col mb-2">
+        <div className="bg-slate-800 border border-slate-700 rounded-xl p-2 shadow-lg flex-1 min-h-[6rem] flex flex-col mb-2 min-h-0">
           <h3 className="text-xs font-bold text-slate-300 mb-1 border-b border-slate-700 pb-1">Combat Log</h3>
           <div ref={logContainerRef} className="flex-grow overflow-y-auto pr-2 no-scrollbar">
             {logs.map((log) => (
@@ -218,7 +218,7 @@ const CombatScreen: React.FC<CombatScreenProps> = ({ player, runState, logs, onA
           </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-2 mt-auto">
+        <div className="grid grid-cols-3 gap-2 mt-auto flex-shrink-0">
           <button
             onClick={handleAttackClick}
             disabled={playerDead || isPostCombatPhase}

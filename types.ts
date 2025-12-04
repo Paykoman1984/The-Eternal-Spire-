@@ -1,5 +1,5 @@
 
-export type GameScreen = 'start' | 'profile_selection' | 'class_selection' | 'main_game' | 'combat' | 'shop' | 'achievements' | 'run_summary' | 'stats';
+export type GameScreen = 'start' | 'profile_selection' | 'name_selection' | 'class_selection' | 'main_game' | 'combat' | 'shop' | 'achievements' | 'run_summary' | 'stats';
 
 export type ClassName = 'Warrior' | 'Rogue' | 'Mage';
 
@@ -32,6 +32,7 @@ export interface Equipment {
 }
 
 export interface Player {
+  name: string; // Custom character name
   level: number; // Account level
   xp: number; // Account XP
   xpToNextLevel: number; // Account XP to next level

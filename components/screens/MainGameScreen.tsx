@@ -1,3 +1,4 @@
+
 import React from 'react';
 import type { Player, EquipmentSlot, Equipment } from '../../types';
 import { EQUIPMENT_SLOTS } from '../../constants';
@@ -93,8 +94,8 @@ const MainGameScreen: React.FC<MainGameScreenProps> = ({ player, onExitToProfile
         <div className="flex items-center mb-2">
             <div className="text-3xl mr-2">{player.classInfo.icon}</div>
             <div>
-                <h2 className="text-lg font-bold text-[#D6721C]">{player.classInfo.name}</h2>
-                <p className="text-sm text-slate-300">Level {player.level}</p>
+                <h2 className="text-lg font-bold text-[#D6721C]">{player.name}</h2>
+                <p className="text-sm text-slate-300">Level {player.level} {player.classInfo.name}</p>
                 <div className="flex items-center text-xs mt-1">
                     <span className="text-purple-400 mr-1">💎</span>
                     <span className="font-bold text-slate-200">{player.eternalShards}</span>
@@ -146,8 +147,8 @@ const MainGameScreen: React.FC<MainGameScreenProps> = ({ player, onExitToProfile
       </div>
 
       <div className="lg:w-2/3 flex flex-col flex-1">
-        <div className="flex-grow bg-slate-800 border border-slate-700 rounded-xl p-2.5 shadow-lg">
-          <h3 className="text-sm font-bold text-[#D6721C] mb-2 border-b-2 border-slate-700 pb-1">Equipment</h3>
+        <div className="bg-slate-800 border border-slate-700 rounded-xl p-2.5 shadow-lg mb-auto">
+          <h3 className="text-sm font-bold text-[#D6721C] mb-2 border-b-2 border-slate-700 pb-1">Inventory</h3>
           <div className="flex flex-wrap gap-1.5 justify-center">
             {EQUIPMENT_SLOTS.map((slot) => (
               <EquipmentSlotDisplay 

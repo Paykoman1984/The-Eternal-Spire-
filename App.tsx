@@ -19,7 +19,8 @@ const PROFILES_STORAGE_KEY = 'eternal_spire_profiles';
 
 const App: React.FC = () => {
   const [gameScreen, setGameScreen] = useState<GameScreen>('start');
-  
+  const [isLandscape, setIsLandscape] = useState(window.innerWidth > window.innerHeight);
+
   // Load profiles from localStorage once on initial component load using a lazy initializer.
   const [profiles, setProfiles] = useState<(Player | null)[]>(() => {
     try {
@@ -48,6 +49,16 @@ const App: React.FC = () => {
           console.error("Failed to save profiles:", error);
       }
   }, [profiles]);
+
+  // Effect to listen for orientation/resize changes
+  useEffect(() => {
+    const handleResize = () => {
+      setIsLandscape(window.innerWidth > window.innerHeight);
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
 
   const updateCurrentPlayer = useCallback((updater: (player: Player) => Player) => {
@@ -514,6 +525,16 @@ const App: React.FC = () => {
       return updatedPlayer;
     });
   }, [updateCurrentPlayer]);
+
+  if (isLandscape) {
+    return (
+       <div className="min-h-screen bg-slate-900/85 text-slate-200 flex flex-col items-center justify-center p-8 text-center font-serif">
+         <div className="text-4xl mb-4">📱</div>
+         <h2 className="text-xl font-bold text-[#D6721C] mb-2">Portrait Mode Required</h2>
+         <p className="text-sm text-slate-400">Please rotate your device to vertical orientation to play The Eternal Spire.</p>
+       </div>
+    );
+  }
 
   const renderScreen = () => {
     const activePlayer = activeProfileIndex !== null ? profiles[activeProfileIndex] : null;

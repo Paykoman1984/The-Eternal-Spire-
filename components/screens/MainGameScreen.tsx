@@ -53,22 +53,19 @@ const EquipmentSlotDisplay: React.FC<{ slot: EquipmentSlot; item: Equipment | un
         return null;
     };
 
-    const nameColor = item ? (RARITY_COLORS[item.rarity || 'Common'] || 'text-[#D6721C]') : 'text-[#D6721C]';
-
     return (
         <div className="relative group">
             {slot === 'Potions' ? (
-                 <div className="w-12 h-12 bg-slate-800/50 border-2 border-slate-600 rounded-md flex flex-col items-center justify-center p-1 text-center">
+                 <div className="w-16 h-16 bg-slate-800/50 border-2 border-slate-600 rounded-md flex flex-col items-center justify-center p-1 text-center">
                     <p className="text-lg">🧪</p>
                     <p className="text-xs font-bold text-slate-300">x{potionCount}</p>
                 </div>
             ) : item ? (
-                <div className="w-12 h-12 bg-slate-800 border-2 border-slate-600 rounded-md flex flex-col items-center justify-center p-1 text-center">
-                    <p className="text-lg">{item.icon}</p>
-                    <p className={`text-[9px] truncate w-full px-0.5 ${nameColor}`}>{item.name}</p>
+                <div className="w-16 h-16 bg-slate-800 border-2 border-slate-600 rounded-md flex flex-col items-center justify-center p-1 text-center">
+                    <p className="text-2xl">{item.icon}</p>
                 </div>
             ) : (
-                <div className="w-12 h-12 bg-slate-800/50 border-2 border-dashed border-slate-600 rounded-md flex flex-col items-center justify-center p-1 text-center hover:border-[#D6721C] hover:bg-slate-800 transition-colors duration-300">
+                <div className="w-16 h-16 bg-slate-800/50 border-2 border-dashed border-slate-600 rounded-md flex flex-col items-center justify-center p-1 text-center hover:border-[#D6721C] hover:bg-slate-800 transition-colors duration-300">
                     <p className="text-[10px] text-slate-500">{slot}</p>
                     <p className="text-base text-slate-600">+</p>
                 </div>
@@ -84,7 +81,7 @@ const MainGameScreen: React.FC<MainGameScreenProps> = ({ player, onExitToProfile
   const hasAccountBuffs = Object.keys(player.accountBuffs).length > 0;
 
   return (
-    <div className="relative flex flex-col gap-3 animate-fadeIn h-full w-full p-4">
+    <div className="relative flex flex-col gap-3 animate-fadeIn flex-1 w-full p-4">
       
       <button
         onClick={onExitToProfiles}
@@ -129,8 +126,8 @@ const MainGameScreen: React.FC<MainGameScreenProps> = ({ player, onExitToProfile
                     <div className="grid grid-cols-3 gap-1 text-xs">
                         {Object.entries(player.accountBuffs).map(([stat, value]) => (
                             <div key={stat} className="text-center bg-slate-900/50 p-0.5 rounded">
-                               <p className="font-semibold text-green-400">+{value}%</p>
-                               <p className="text-slate-400 text-[10px]">{stat.toUpperCase()}</p>
+                                <p className="font-semibold text-green-400">+{value}%</p>
+                                <p className="text-slate-400 text-[10px]">{stat.toUpperCase()}</p>
                             </div>
                         ))}
                     </div>

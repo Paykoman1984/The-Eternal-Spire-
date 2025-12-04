@@ -240,21 +240,21 @@ const CombatScreen: React.FC<CombatScreenProps> = ({ player, runState, logs, onA
           <button
             onClick={handleAttackClick}
             disabled={playerDead || isPostCombatPhase}
-            className="w-full px-4 py-2.5 bg-red-700 text-white font-bold text-sm rounded-lg shadow-md hover:bg-red-600 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed"
+            className="w-full px-4 py-2.5 bg-red-700 text-white font-bold text-sm rounded shadow-md hover:bg-red-600 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed"
           >
             Attack
           </button>
           <button
             onClick={onUsePotion}
             disabled={playerDead || isPostCombatPhase || player.potionCount <= 0 || runState.playerCurrentHpInRun >= player.currentStats.maxHp}
-            className="w-full px-4 py-2.5 bg-blue-700 text-white font-bold text-sm rounded-lg shadow-md hover:bg-blue-600 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed"
+            className="w-full px-4 py-2.5 bg-blue-700 text-white font-bold text-sm rounded shadow-md hover:bg-blue-600 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed"
           >
             Potion ({player.potionCount})
           </button>
           <button
             onClick={onFlee}
             disabled={playerDead || isPostCombatPhase}
-            className="w-full px-4 py-2.5 bg-slate-600 text-slate-200 font-bold text-sm rounded-lg hover:bg-slate-500 transition-colors focus:outline-none focus:ring-2 focus:ring-slate-400 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed"
+            className="w-full px-4 py-2.5 bg-slate-600 text-slate-200 font-bold text-sm rounded shadow-md hover:bg-slate-500 transition-colors focus:outline-none focus:ring-2 focus:ring-slate-400 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed"
           >
             Flee
           </button>

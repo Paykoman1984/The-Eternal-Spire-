@@ -49,53 +49,77 @@ export function generateLoot(floor: number, playerLevel: number): {
     const template = getRandom(ITEM_TEMPLATES[slot]);
     
     // --- Dynamic Rarity Calculation ---
-    // Roll a value between 0 and 100
-    // Add a bonus based on the floor (deeper floors = better rolls)
     const roll = (Math.random() * 100) + (floor * 0.5);
     
     let rarity: Rarity;
     let statBudgetMultiplier: number;
+    let targetStatCount = 1;
 
     if (roll < 60) {
         rarity = 'Common';
         statBudgetMultiplier = 1;
+        targetStatCount = 1;
     } else if (roll < 85) {
         rarity = 'Uncommon';
         statBudgetMultiplier = 1.5;
+        targetStatCount = Math.random() < 0.3 ? 2 : 1;
     } else if (roll < 95) {
         rarity = 'Rare';
         statBudgetMultiplier = 2.5;
+        targetStatCount = 2;
     } else if (roll < 99) {
         rarity = 'Epic';
         statBudgetMultiplier = 4;
+        targetStatCount = Math.random() < 0.5 ? 3 : 2;
     } else {
         rarity = 'Legendary';
         statBudgetMultiplier = 6;
+        targetStatCount = 3;
     }
 
     const prefixes = ITEM_PREFIXES[rarity];
     const prefix = getRandom(prefixes);
     const name = `${prefix} ${template.name}`;
     
-    // Base stat budget scales slightly with floor + rarity multiplier
+    // Calculate Budget
     const baseBudget = 1 + Math.floor(floor / 5);
     const statBudget = Math.max(1, Math.floor(baseBudget * statBudgetMultiplier));
     
-    const newStats: Partial<Stats> = {};
+    // Ensure we don't try to pick more stats than available or than budget allows (1 point per stat min)
     const possibleStats = [...template.possibleStats];
+    const numToPick = Math.min(targetStatCount, possibleStats.length, statBudget);
+    
+    // Select distinct stats to populate
+    const chosenStats: (keyof Stats)[] = [];
+    const availableToPick = [...possibleStats];
+    for (let k = 0; k < numToPick; k++) {
+        const idx = Math.floor(Math.random() * availableToPick.length);
+        chosenStats.push(availableToPick[idx]);
+        availableToPick.splice(idx, 1);
+    }
+    
+    // Fallback if something went wrong
+    if (chosenStats.length === 0) chosenStats.push(getRandom(possibleStats));
 
-    // Distribute stat budget
-    for(let i = 0; i < statBudget; i++) {
-        const randomStat = getRandom(possibleStats);
-        const currentStatValue = newStats[randomStat] ?? 0;
-        const increase = STAT_WEIGHTS[randomStat];
-        newStats[randomStat] = currentStatValue + increase;
+    const newStats: Partial<Stats> = {};
+
+    // 1. Assign at least one increment to each chosen stat to ensure it exists
+    chosenStats.forEach(stat => {
+        newStats[stat] = STAT_WEIGHTS[stat];
+    });
+
+    // 2. Distribute remaining budget randomly among chosen stats
+    let remainingBudget = statBudget - chosenStats.length;
+    for(let i = 0; i < remainingBudget; i++) {
+        const randomStat = getRandom(chosenStats);
+        const currentVal = newStats[randomStat] || 0;
+        newStats[randomStat] = currentVal + STAT_WEIGHTS[randomStat];
     }
 
-    // Ensure stats are integers
+    // 3. Ensure integrity: Round and enforce minimum of 1
     Object.keys(newStats).forEach(key => {
         const statKey = key as keyof Stats;
-        newStats[statKey] = Math.round(newStats[statKey]!);
+        newStats[statKey] = Math.max(1, Math.round(newStats[statKey]!));
     });
 
     equipment = {

@@ -13,22 +13,28 @@ function generateShopItem(playerLevel: number, slot: GearSlot): Equipment {
     
     let rarity: Rarity;
     let statBudgetMultiplier: number;
+    let targetStatCount = 1;
 
     if (roll < 50) {
         rarity = 'Common';
         statBudgetMultiplier = 1;
+        targetStatCount = 1;
     } else if (roll < 80) {
         rarity = 'Uncommon';
         statBudgetMultiplier = 1.3;
+        targetStatCount = Math.random() < 0.3 ? 2 : 1;
     } else if (roll < 95) {
         rarity = 'Rare';
         statBudgetMultiplier = 2.0;
+        targetStatCount = 2;
     } else if (roll < 99) {
         rarity = 'Epic';
         statBudgetMultiplier = 3.0;
+        targetStatCount = Math.random() < 0.5 ? 3 : 2;
     } else {
         rarity = 'Legendary';
         statBudgetMultiplier = 4.5;
+        targetStatCount = 3;
     }
 
     const prefixes = ITEM_PREFIXES[rarity];
@@ -38,19 +44,37 @@ function generateShopItem(playerLevel: number, slot: GearSlot): Equipment {
     const baseBudget = 1 + Math.floor(playerLevel / 3);
     const statBudget = Math.max(1, Math.floor(baseBudget * statBudgetMultiplier));
     
-    const newStats: Partial<Stats> = {};
     const possibleStats = [...template.possibleStats];
+    const numToPick = Math.min(targetStatCount, possibleStats.length, statBudget);
 
-    for(let i = 0; i < statBudget; i++) {
-        const randomStat = getRandom(possibleStats);
-        const currentStatValue = newStats[randomStat] ?? 0;
-        const increase = STAT_WEIGHTS[randomStat];
-        newStats[randomStat] = currentStatValue + increase;
+    // Select distinct stats
+    const chosenStats: (keyof Stats)[] = [];
+    const availableToPick = [...possibleStats];
+    for (let k = 0; k < numToPick; k++) {
+        const idx = Math.floor(Math.random() * availableToPick.length);
+        chosenStats.push(availableToPick[idx]);
+        availableToPick.splice(idx, 1);
+    }
+    if (chosenStats.length === 0) chosenStats.push(getRandom(possibleStats));
+
+    const newStats: Partial<Stats> = {};
+
+    // 1. Seed
+    chosenStats.forEach(stat => {
+        newStats[stat] = STAT_WEIGHTS[stat];
+    });
+
+    // 2. Distribute remaining
+    let remainingBudget = statBudget - chosenStats.length;
+    for(let i = 0; i < remainingBudget; i++) {
+        const randomStat = getRandom(chosenStats);
+        newStats[randomStat] = (newStats[randomStat] || 0) + STAT_WEIGHTS[randomStat];
     }
 
+    // 3. Round & Min 1
     Object.keys(newStats).forEach(key => {
         const statKey = key as keyof Stats;
-        newStats[statKey] = Math.round(newStats[statKey]!);
+        newStats[statKey] = Math.max(1, Math.round(newStats[statKey]!));
     });
 
     // Calculate item power for cost

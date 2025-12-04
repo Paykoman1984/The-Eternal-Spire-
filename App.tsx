@@ -323,9 +323,7 @@ const App: React.FC = () => {
       newRunState.enemiesKilled += 1;
       
       // Calculate loot *before* updating state to avoid race conditions
-      // PASS PLAYER LEVEL FOR DYNAMIC DROP RATES
       const loot = generateLoot(newRunState.floor, activePlayer.level);
-      
       if (loot.equipment) {
           lootDropped = loot.equipment;
           newRunState.pendingLoot = loot.equipment;
@@ -458,11 +456,14 @@ const App: React.FC = () => {
     let newRunState = { ...runState };
     let logs: { message: string, color: CombatLog['color'] }[] = [];
     let playerDefeated = false;
-    const POTION_HEAL_PERCENT = 0.3;
+    // FIXED: FLAT 50 HP HEAL
+    const POTION_HEAL_AMOUNT = 50;
 
     updateCurrentPlayer(player => ({ ...player, potionCount: player.potionCount - 1 }));
 
-    const healAmount = Math.floor(activePlayer.currentStats.maxHp * POTION_HEAL_PERCENT);
+    // const healAmount = Math.floor(activePlayer.currentStats.maxHp * POTION_HEAL_PERCENT); // OLD
+    const healAmount = POTION_HEAL_AMOUNT;
+    
     const oldHp = newRunState.playerCurrentHpInRun;
     newRunState.playerCurrentHpInRun = Math.min(activePlayer.currentStats.maxHp, newRunState.playerCurrentHpInRun + healAmount);
     const actualHeal = newRunState.playerCurrentHpInRun - oldHp;

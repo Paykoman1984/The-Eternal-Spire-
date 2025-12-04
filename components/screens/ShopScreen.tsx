@@ -47,7 +47,7 @@ const ShopScreen: React.FC<ShopScreenProps> = ({ player, onExit, onBuyPotion, on
                             <span className="text-2xl mr-2">🧪</span>
                             <div>
                                 <p className="text-sm font-bold text-slate-200">Health Potion</p>
-                                <p className="text-xs text-slate-400">Restores 30% HP (Max: 5)</p>
+                                <p className="text-xs text-slate-400">Restores 50 HP (Max: 5)</p>
                             </div>
                         </div>
                         <button

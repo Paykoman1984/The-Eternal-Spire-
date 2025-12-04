@@ -1,4 +1,3 @@
-
 import React from 'react';
 import type { Player, Achievement } from '../../types';
 
@@ -53,13 +52,13 @@ const AchievementCard: React.FC<{
     };
 
     return (
-        <div className="bg-slate-900/70 border border-slate-700 rounded-lg p-2.5 flex flex-col">
+        <div className="bg-slate-900/70 border border-slate-700 rounded-lg p-2 flex flex-col">
             <div>
                 <h4 className="font-bold text-sm text-[#D6721C]">{achievement.title}</h4>
-                <p className="text-xs text-slate-400 mt-0.5 mb-2">{achievement.description}</p>
+                <p className="text-xs text-slate-400 mt-0.5 mb-1.5">{achievement.description}</p>
             </div>
             <div className="mt-auto">
-                <div className="w-full bg-slate-800 rounded-full h-2 mb-1.5 border border-slate-600">
+                <div className="w-full bg-slate-800 rounded-full h-1.5 mb-1 border border-slate-600">
                     <div 
                         className="bg-[#D6721C] h-full rounded-full transition-all duration-500" 
                         style={{ width: `${progressPercentage}%` }}
@@ -69,7 +68,7 @@ const AchievementCard: React.FC<{
                     <div className="text-xs text-slate-300">
                        <p>{Math.min(currentProgress, achievement.goal)}/{achievement.goal}</p>
                        {!achievement.isBuff && (
-                            <p className="mt-0.5 text-xs">Reward: 
+                            <p className="mt-0.5 text-[10px]">Reward: 
                                 {achievement.rewards.shards && <span className="text-purple-400"> 💎{achievement.rewards.shards}</span>}
                                 {achievement.rewards.potions && <span className="text-blue-400"> 🧪x{achievement.rewards.potions}</span>}
                             </p>
@@ -87,33 +86,35 @@ const AchievementsScreen: React.FC<AchievementsScreenProps> = ({ player, achieve
     const questAchievements = achievements.filter(a => !a.isBuff);
 
     return (
-        <div className="bg-slate-800 border border-slate-700 rounded-xl p-3 shadow-lg animate-fadeIn w-full max-w-2xl mx-auto">
-            <div className="flex justify-between items-center border-b-2 border-slate-700 pb-2 mb-2">
-                <h2 className="text-xl font-bold text-[#D6721C]">Achievements</h2>
-            </div>
+        <div className="animate-fadeIn flex flex-col items-center justify-center min-h-screen p-4">
+            <div className="bg-slate-800 border border-slate-700 rounded-xl p-3 shadow-lg w-full max-w-2xl flex flex-col max-h-[90vh]">
+                <div className="flex justify-between items-center border-b-2 border-slate-700 pb-1.5 mb-2">
+                    <h2 className="text-lg font-bold text-[#D6721C]">Achievements</h2>
+                </div>
 
-            <div className="space-y-3 mt-2 max-h-[65vh] overflow-y-auto pr-1">
-                <div>
-                    <h3 className="text-base font-bold text-[#D6721C] mb-1.5">Permanent Buffs</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                        {buffAchievements.map(ach => <AchievementCard key={ach.id} player={player} achievement={ach} onClaim={onClaim} />)}
+                <div className="space-y-3 mt-2 flex-grow overflow-y-auto pr-1 no-scrollbar">
+                    <div>
+                        <h3 className="text-sm font-bold text-[#D6721C] mb-1.5">Permanent Buffs</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                            {buffAchievements.map(ach => <AchievementCard key={ach.id} player={player} achievement={ach} onClaim={onClaim} />)}
+                        </div>
+                    </div>
+                     <div>
+                        <h3 className="text-sm font-bold text-[#D6721C] mb-1.5">Quests</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                            {questAchievements.map(ach => <AchievementCard key={ach.id} player={player} achievement={ach} onClaim={onClaim} />)}
+                        </div>
                     </div>
                 </div>
-                 <div>
-                    <h3 className="text-base font-bold text-[#D6721C] mb-1.5">Quests</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                        {questAchievements.map(ach => <AchievementCard key={ach.id} player={player} achievement={ach} onClaim={onClaim} />)}
-                    </div>
-                </div>
-            </div>
 
-            <div className="mt-4 text-center">
-                 <button
-                    onClick={onExit}
-                    className="px-5 py-2 bg-slate-600 text-slate-200 font-bold text-sm rounded-lg hover:bg-slate-500 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-slate-400"
-                >
-                    Return
-                </button>
+                <div className="mt-3 text-center">
+                     <button
+                        onClick={onExit}
+                        className="px-5 py-1.5 bg-slate-600 text-slate-200 font-bold text-sm rounded-lg hover:bg-slate-500 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-slate-400"
+                    >
+                        Return
+                    </button>
+                </div>
             </div>
         </div>
     );

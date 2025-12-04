@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback, useEffect } from 'react';
 import type { GameScreen, Player, PlayerClass, RunState, CombatLog, Equipment, GearSlot, Achievement } from './types';
 import { generateEnemy } from './utils/combat';
@@ -307,10 +306,7 @@ const App: React.FC = () => {
 
           const xpGained = newRunState.currentEnemy.xpReward;
           newRunState.runXp += xpGained;
-          // Note: totalAccumulatedXp is updated when run ends to avoid double counting if run crashes, 
-          // OR we can update it here. Let's update it at End Run Summary to keep it cleaner.
-          // Correction: The user wants "total xp gained". It's better to update it at end run.
-
+          
           logs.push({ message: `You gained ${xpGained} XP.`, color: 'text-[#D6721C]' });
 
           if (newRunState.runXp >= newRunState.runXpToNextLevel) {
@@ -602,10 +598,8 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-black/50 text-slate-200 flex items-center justify-center p-4 font-serif">
-      <div className="w-full max-w-4xl mx-auto">
+    <div className="min-h-screen bg-black/50 text-slate-200 font-serif flex flex-col">
         {renderScreen()}
-      </div>
     </div>
   );
 };

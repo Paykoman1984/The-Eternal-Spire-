@@ -65,23 +65,26 @@ const ShopScreen: React.FC<ShopScreenProps> = ({ player, onExit, onBuyPotion, on
                             <h3 className="text-sm font-bold text-[#D6721C] mb-1">Fresh Stock!</h3>
                             {player.shopInventory.map((item, index) => {
                                 const rarityColor = RARITY_COLORS[item.rarity || 'Common'];
+                                const canEquip = !item.weaponType || player.classInfo.allowedWeaponTypes.includes(item.weaponType);
+                                
                                 return (
                                     <div key={index} className="bg-slate-900/70 border border-slate-700 rounded-lg p-1.5 flex items-center justify-between mb-1.5">
                                         <div className="flex items-center overflow-hidden">
                                             <span className="text-2xl mr-2">{item.icon}</span>
                                             <div className="flex-1 min-w-0">
                                                 <p className={`text-sm font-bold truncate ${rarityColor}`}>{item.name}</p>
-                                                <p className="text-[9px] text-slate-500 mb-0.5">{item.rarity || 'Common'}</p>
+                                                <p className="text-[9px] text-slate-500 mb-0.5">{item.rarity || 'Common'} {item.weaponType ? `- ${item.weaponType}` : ''}</p>
                                                 <div className="flex flex-wrap gap-x-2 text-xs text-slate-400">
                                                     {Object.entries(item.stats).map(([stat, value]) => (
                                                         <span key={stat}>{stat.toUpperCase()}: <span className="text-green-400">+{value}</span></span>
                                                     ))}
                                                 </div>
+                                                {!canEquip && <p className="text-[9px] text-red-400 mt-0.5">Cannot Equip</p>}
                                             </div>
                                         </div>
                                         <button
                                             onClick={() => onBuyShopItem(item)}
-                                            disabled={player.eternalShards < (item.cost ?? 0)}
+                                            disabled={player.eternalShards < (item.cost ?? 0) || !canEquip}
                                             className="px-2.5 py-1 text-xs bg-green-600 text-white font-bold rounded-md shadow-md hover:bg-green-500 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-green-400 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed"
                                         >
                                             <div className="flex items-center justify-center">

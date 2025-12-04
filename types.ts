@@ -13,10 +13,13 @@ export interface Stats {
   evasion: number;
 }
 
+export type WeaponType = 'Sword' | 'Hammer' | 'Dagger' | 'Bow' | 'Mace' | 'Staff' | 'None';
+
 export interface PlayerClass {
   name: ClassName;
   description: string;
   baseStats: Stats;
+  allowedWeaponTypes: WeaponType[];
   icon: string;
 }
 
@@ -31,6 +34,7 @@ export interface Equipment {
   icon: string;
   stats: Partial<Stats>;
   rarity: Rarity;
+  weaponType?: WeaponType; // Only present if slot is Weapon
   cost?: number;
 }
 

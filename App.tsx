@@ -131,11 +131,11 @@ const App: React.FC = () => {
     let startingWeapon: Equipment | null = null;
 
     if (selectedClass.name === 'Warrior') {
-        startingWeapon = { name: 'Dusty Sword', slot: 'Weapon', icon: '⚔️', stats: { str: 1 }, rarity: 'Common' };
+        startingWeapon = { name: 'Dusty Sword', slot: 'Weapon', icon: '⚔️', stats: { str: 1 }, rarity: 'Common', weaponType: 'Sword' };
     } else if (selectedClass.name === 'Rogue') {
-        startingWeapon = { name: 'Rusty Dagger', slot: 'Weapon', icon: '🔪', stats: { dex: 1 }, rarity: 'Common' };
+        startingWeapon = { name: 'Rusty Dagger', slot: 'Weapon', icon: '🔪', stats: { dex: 1 }, rarity: 'Common', weaponType: 'Dagger' };
     } else if (selectedClass.name === 'Mage') {
-        startingWeapon = { name: 'Rusty Staff', slot: 'Weapon', icon: '🪄', stats: { int: 1 }, rarity: 'Common' };
+        startingWeapon = { name: 'Rusty Staff', slot: 'Weapon', icon: '🪄', stats: { int: 1 }, rarity: 'Common', weaponType: 'Staff' };
     }
     
     if (startingWeapon) {

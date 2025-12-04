@@ -65,7 +65,7 @@ const ItemCard: React.FC<{ title: string, item: Equipment | null }> = ({ title, 
                         <span className="text-2xl mr-2">{item.icon}</span>
                         <div className="flex flex-col">
                             <span className={`font-bold text-sm ${rarityColor}`}>{item.name}</span>
-                            <span className="text-[10px] text-slate-500">{item.rarity || 'Common'}</span>
+                            <span className="text-[10px] text-slate-500">{item.rarity || 'Common'} {item.weaponType ? `- ${item.weaponType}` : ''}</span>
                         </div>
                     </div>
                     <div className="space-y-0.5">
@@ -86,11 +86,14 @@ const ItemCard: React.FC<{ title: string, item: Equipment | null }> = ({ title, 
 
 
 const LootDecision: React.FC<{
+    player: Player;
     newItem: Equipment;
     oldItem: Equipment | null;
     onLootDecision: (equip: boolean) => void;
-}> = ({ newItem, oldItem, onLootDecision }) => {
+}> = ({ player, newItem, oldItem, onLootDecision }) => {
     const allStats = Array.from(new Set([...Object.keys(newItem.stats), ...Object.keys(oldItem?.stats ?? {})])) as (keyof Stats)[];
+    
+    const canEquip = !newItem.weaponType || player.classInfo.allowedWeaponTypes.includes(newItem.weaponType);
 
     return (
         <div className="absolute inset-0 bg-slate-900/90 z-50 flex items-center justify-center animate-fadeIn p-4">
@@ -113,10 +116,18 @@ const LootDecision: React.FC<{
                      )) : <p className="text-xs text-slate-500">No stat changes.</p>}
                 </div>
 
+                {!canEquip && (
+                    <div className="mb-2 p-2 bg-red-900/50 border border-red-700 rounded text-center">
+                        <p className="text-xs text-red-300 font-bold">Class Restricted</p>
+                        <p className="text-[10px] text-red-400">Can only use: {player.classInfo.allowedWeaponTypes.join(', ')}</p>
+                    </div>
+                )}
+
                 <div className="grid grid-cols-2 gap-2">
                     <button 
                         onClick={() => onLootDecision(true)}
-                        className="w-full px-4 py-1.5 bg-green-600 text-white font-bold text-sm rounded-lg hover:bg-green-500 transition-colors"
+                        disabled={!canEquip}
+                        className="w-full px-4 py-1.5 bg-green-600 text-white font-bold text-sm rounded-lg hover:bg-green-500 transition-colors disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed"
                     >Equip</button>
                     <button 
                         onClick={() => onLootDecision(false)}
@@ -158,6 +169,7 @@ const CombatScreen: React.FC<CombatScreenProps> = ({ player, runState, logs, onA
       <div className="w-full max-w-3xl h-full flex flex-col gap-2 relative">
         {isLootPending && runState.pendingLoot && (
            <LootDecision 
+              player={player}
               newItem={runState.pendingLoot}
               oldItem={currentlyEquipped}
               onLootDecision={onLootDecision}

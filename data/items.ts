@@ -1,5 +1,5 @@
 
-import type { Equipment, Stats, GearSlot, Rarity } from '../types';
+import type { Equipment, Stats, GearSlot, Rarity, WeaponType } from '../types';
 
 type ItemTemplate = Omit<Equipment, 'name' | 'stats' | 'rarity'> & {
     name: string;
@@ -8,9 +8,17 @@ type ItemTemplate = Omit<Equipment, 'name' | 'stats' | 'rarity'> & {
 
 export const ITEM_TEMPLATES: Record<GearSlot, ItemTemplate[]> = {
     Weapon: [
-        { name: 'Sword', slot: 'Weapon', icon: '⚔️', possibleStats: ['str', 'critRate'] },
-        { name: 'Dagger', slot: 'Weapon', icon: '🔪', possibleStats: ['dex', 'critRate', 'evasion'] },
-        { name: 'Staff', slot: 'Weapon', icon: '🪄', possibleStats: ['int', 'maxHp'] },
+        // Warrior Weapons
+        { name: 'Sword', slot: 'Weapon', icon: '⚔️', weaponType: 'Sword', possibleStats: ['str', 'critRate'] },
+        { name: 'Warhammer', slot: 'Weapon', icon: '🔨', weaponType: 'Hammer', possibleStats: ['str', 'defense'] },
+        
+        // Rogue Weapons
+        { name: 'Dagger', slot: 'Weapon', icon: '🔪', weaponType: 'Dagger', possibleStats: ['dex', 'critRate', 'evasion'] },
+        { name: 'Longbow', slot: 'Weapon', icon: '🏹', weaponType: 'Bow', possibleStats: ['dex', 'critRate'] },
+        
+        // Mage Weapons
+        { name: 'Staff', slot: 'Weapon', icon: '🪄', weaponType: 'Staff', possibleStats: ['int', 'maxHp'] },
+        { name: 'Mace', slot: 'Weapon', icon: '🏺', weaponType: 'Mace', possibleStats: ['int', 'str', 'defense'] }, // Battlemage style
     ],
     Helmet: [
         { name: 'Iron Helm', slot: 'Helmet', icon: '🪖', possibleStats: ['defense', 'maxHp'] },

@@ -1,3 +1,4 @@
+
 export type GameScreen = 'start' | 'profile_selection' | 'name_selection' | 'class_selection' | 'main_game' | 'combat' | 'shop' | 'achievements' | 'run_summary' | 'stats';
 
 export type ClassName = 'Warrior' | 'Rogue' | 'Mage';
@@ -89,6 +90,10 @@ export interface RunState {
   pendingLoot: Equipment | null;
   enemiesKilled: number;
   shardsEarned: number;
+  fleePenalty?: {
+      xpLost: number;
+      shardsLost: number;
+  };
 }
 
 export interface CombatLog {

@@ -1,3 +1,4 @@
+
 import React from 'react';
 import type { RunState } from '../../types';
 
@@ -21,10 +22,20 @@ const RunSummaryScreen: React.FC<RunSummaryScreenProps> = ({ runState, onClose }
             <p className="text-slate-400 text-xs mb-3">Your ascent has ended... for now.</p>
             
             <div className="space-y-1.5 mb-3">
-            <StatRow label="Max Floor Reached" value={runState.floor} color="text-[#D6721C]" />
-            <StatRow label="Enemies Defeated" value={runState.enemiesKilled} />
-            <StatRow label="XP Earned" value={runState.runXp} color="text-green-400" />
-            <StatRow label="Shards Collected" value={runState.shardsEarned} color="text-purple-400" />
+                <StatRow label="Max Floor Reached" value={runState.floor} color="text-[#D6721C]" />
+                <StatRow label="Enemies Defeated" value={runState.enemiesKilled} />
+                <StatRow label="XP Earned" value={runState.runXp} color="text-green-400" />
+                <StatRow label="Shards Collected" value={runState.shardsEarned} color="text-purple-400" />
+                
+                {runState.fleePenalty && (
+                    <div className="mt-2 pt-2 border-t border-slate-700 w-full animate-fadeIn">
+                        <p className="text-xs font-bold text-red-500 mb-1">Flee Penalty (-15%)</p>
+                        <div className="space-y-1">
+                            <StatRow label="XP Lost" value={`-${runState.fleePenalty.xpLost}`} color="text-red-400" />
+                            <StatRow label="Shards Lost" value={`-${runState.fleePenalty.shardsLost}`} color="text-red-400" />
+                        </div>
+                    </div>
+                )}
             </div>
 
             <button

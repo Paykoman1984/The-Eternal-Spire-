@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback, useEffect } from 'react';
 import type { GameScreen, Player, PlayerClass, RunState, CombatLog, Equipment, GearSlot, Achievement } from './types';
 import { generateEnemy } from './utils/combat';
@@ -510,9 +511,28 @@ const App: React.FC = () => {
   }, [activeProfileIndex, profiles, runState, updateCurrentPlayer]);
   
   const handleFlee = useCallback(() => {
-    updateCurrentPlayer(player => ({ ...player, totalFlees: (player.totalFlees || 0) + 1 }));
+    if (!runState) return;
+
+    const xpLost = Math.floor(runState.runXp * 0.15);
+    const shardsLost = Math.floor(runState.shardsEarned * 0.15);
+
+    updateCurrentPlayer(player => ({ 
+        ...player, 
+        totalFlees: (player.totalFlees || 0) + 1,
+        xp: Math.max(0, player.xp - xpLost),
+        eternalShards: Math.max(0, player.eternalShards - shardsLost)
+    }));
+    
+    setRunState(prev => prev ? ({
+        ...prev,
+        fleePenalty: {
+            xpLost,
+            shardsLost
+        }
+    }) : null);
+
     setGameScreen('run_summary');
-  }, [updateCurrentPlayer]);
+  }, [runState, updateCurrentPlayer]);
 
   const handleExitToProfiles = useCallback(() => {
     setActiveProfileIndex(null);
@@ -569,7 +589,7 @@ const App: React.FC = () => {
     updateCurrentPlayer(player => {
         const currentLevelRefreshes = (player.shopRefreshes && player.shopRefreshes.level === player.level) ? player.shopRefreshes.count : 0;
         
-        if (player.level < 5 || player.eternalShards < 1000 || currentLevelRefreshes >= 3) {
+        if (player.eternalShards < 1000 || currentLevelRefreshes >= 3) {
             return player;
         }
         

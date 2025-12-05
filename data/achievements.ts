@@ -1,3 +1,5 @@
+
+
 import type { Achievement } from '../types';
 
 export const ACHIEVEMENTS: Achievement[] = [
@@ -39,6 +41,24 @@ export const ACHIEVEMENTS: Achievement[] = [
         targetId: 'SLIME',
         goal: 25,
         rewards: { shards: 150, potions: 1 },
+    },
+    {
+        id: 'quest_slay_20_skeletons',
+        title: 'Bone Breaker',
+        description: 'Defeat 20 Skeletons in the Spire.',
+        type: 'slay',
+        targetId: 'SKELETON',
+        goal: 20,
+        rewards: { shards: 200 },
+    },
+    {
+        id: 'quest_slay_15_orcs',
+        title: 'Orc Bane',
+        description: 'Defeat 15 Orcs in the Spire.',
+        type: 'slay',
+        targetId: 'ORC',
+        goal: 15,
+        rewards: { shards: 300 },
     },
     {
         id: 'quest_reach_floor_10',

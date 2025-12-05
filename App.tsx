@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback, useEffect } from 'react';
 import type { GameScreen, Player, PlayerClass, RunState, CombatLog, Equipment, GearSlot, Achievement } from './types';
 import { generateEnemy } from './utils/combat';
@@ -30,10 +29,25 @@ const App: React.FC = () => {
         if (savedProfiles) {
             const parsedProfiles = JSON.parse(savedProfiles);
             if (Array.isArray(parsedProfiles) && (parsedProfiles.length === 2)) {
-                // Migration: Ensure name property exists for old profiles
+                // Migration: Ensure new properties exist for old profiles
                 return parsedProfiles.map((p: any) => {
-                    if (p && !p.name) {
-                        return { ...p, name: p.classInfo.name };
+                    if (p) {
+                        const updatedProfile = { ...p };
+                        if (!updatedProfile.name) updatedProfile.name = updatedProfile.classInfo.name;
+                        
+                        // Migrate from shopRefreshesUsed to the new shopRefreshes object
+                        if (!updatedProfile.shopRefreshes) {
+                            updatedProfile.shopRefreshes = { level: updatedProfile.level, count: 0 };
+                        }
+                        if (updatedProfile.shopRefreshesUsed !== undefined) {
+                            // If old data exists and it's for the current level, respect it.
+                            if (updatedProfile.shopRefreshes.level === updatedProfile.level) {
+                                updatedProfile.shopRefreshes.count = updatedProfile.shopRefreshesUsed;
+                            }
+                            delete updatedProfile.shopRefreshesUsed; // Clean up the old key
+                        }
+
+                        return updatedProfile;
                     }
                     return p;
                 });
@@ -157,6 +171,7 @@ const App: React.FC = () => {
       equipment: startingEquipment,
       shopInventory: [],
       lastShopRefreshLevel: 1,
+      shopRefreshes: { level: 1, count: 0 },
       achievementProgress: {},
       claimedAchievements: [],
       maxFloorReached: 0,
@@ -550,6 +565,26 @@ const App: React.FC = () => {
     });
   }, [updateCurrentPlayer]);
 
+  const handleRefreshShop = useCallback(() => {
+    updateCurrentPlayer(player => {
+        const currentLevelRefreshes = (player.shopRefreshes && player.shopRefreshes.level === player.level) ? player.shopRefreshes.count : 0;
+        
+        if (player.level < 5 || player.eternalShards < 1000 || currentLevelRefreshes >= 3) {
+            return player;
+        }
+        
+        return {
+            ...player,
+            eternalShards: player.eternalShards - 1000,
+            shopRefreshes: {
+                level: player.level,
+                count: currentLevelRefreshes + 1
+            },
+            shopInventory: generateShopInventory(player)
+        };
+    });
+  }, [updateCurrentPlayer]);
+
   const handleClaimAchievement = useCallback((achievementId: string) => {
     updateCurrentPlayer(player => {
       const achievement = ACHIEVEMENTS.find(ach => ach.id === achievementId);
@@ -625,6 +660,7 @@ const App: React.FC = () => {
             onExit={handleExitSubScreen}
             onBuyPotion={handleBuyPotion}
             onBuyShopItem={handleBuyShopItem}
+            onRefresh={handleRefreshShop}
           />;
         }
         break;

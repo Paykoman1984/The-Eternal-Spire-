@@ -1,7 +1,17 @@
+
+
 import { BASE_ENEMIES } from '../data/enemies';
 import type { Enemy } from '../types';
 
-const TIER_1_ENEMIES = [BASE_ENEMIES.SLIME, BASE_ENEMIES.GOBLIN, BASE_ENEMIES.BAT];
+const TIER_1_ENEMIES = [
+    BASE_ENEMIES.SLIME, 
+    BASE_ENEMIES.GOBLIN, 
+    BASE_ENEMIES.BAT,
+    BASE_ENEMIES.SKELETON,
+    BASE_ENEMIES.SPIDER,
+    BASE_ENEMIES.ORC,
+    BASE_ENEMIES.WRAITH
+];
 
 export function generateEnemy(floor: number): Enemy {
   let baseEnemyData;

@@ -42,7 +42,7 @@ const EquipmentSlotDisplay: React.FC<{ slot: EquipmentSlot; item: Equipment | un
             return (
                 <div className={`absolute ${tooltipPositionClass} w-max invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-opacity duration-300 bg-slate-900 border border-[#D6721C] rounded-md shadow-lg p-2 text-xs z-50 pointer-events-none`}>
                     <p className={`font-bold ${rarityColor}`}>{item.name}</p>
-                    <p className="text-[10px] text-slate-400 mb-1">{item.rarity || 'Common'}</p>
+                    <p className="text-[10px] text-slate-400 mb-1">{item.slot} • {item.rarity || 'Common'}</p>
                     {Object.keys(item.stats).length > 0 && (
                         <div className="mt-1 border-t border-slate-600 pt-1 space-y-0.5">
                             {Object.entries(item.stats).map(([stat, value]) => (
@@ -161,7 +161,7 @@ const MainGameScreen: React.FC<MainGameScreenProps> = ({ player, onExitToProfile
       <div className="flex flex-col flex-1 min-h-0">
         
         {/* Inventory Paper Doll Layout */}
-        <div className="bg-slate-800 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-slate-700 to-slate-900 border border-slate-700 rounded-xl p-4 shadow-lg mb-auto relative flex justify-center items-center h-[340px] w-full max-w-md mx-auto">
+        <div className="bg-slate-800 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-slate-700 to-slate-900 border border-slate-700 rounded-xl p-4 shadow-lg mb-auto relative flex justify-center items-center h-[290px] w-full max-w-md mx-auto">
             <h3 className="absolute top-2 left-3 text-sm font-bold text-[#D6721C] border-b border-slate-700 pb-0.5 z-10">Inventory</h3>
             
             {/* Detailed Silhouette Background */}
@@ -193,7 +193,7 @@ const MainGameScreen: React.FC<MainGameScreenProps> = ({ player, onExitToProfile
                 </svg>
             </div>
 
-            {/* Equipment Slots - Positioned Absolute - Lowered by ~20px */}
+            {/* Equipment Slots - Positioned Absolute */}
             
             {/* Helmet: Top Center - Moved to top-11 */}
             <div className="absolute top-11 left-1/2 -translate-x-1/2 z-10">

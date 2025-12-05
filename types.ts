@@ -1,4 +1,3 @@
-
 export type GameScreen = 'start' | 'profile_selection' | 'name_selection' | 'class_selection' | 'main_game' | 'combat' | 'shop' | 'achievements' | 'run_summary' | 'stats';
 
 export type ClassName = 'Warrior' | 'Rogue' | 'Mage';
@@ -53,6 +52,7 @@ export interface Player {
   equipment: Partial<Record<GearSlot, Equipment>>;
   shopInventory: Equipment[];
   lastShopRefreshLevel: number;
+  shopRefreshes: { level: number; count: number }; // Tracks manual refreshes per level
   achievementProgress: Record<string, number>; // key: achievementId, value: progress
   claimedAchievements: string[]; // array of achievementIds
   maxFloorReached: number;

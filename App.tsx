@@ -1,5 +1,10 @@
 
 
+
+
+
+
+
 import React, { useState, useCallback, useEffect } from 'react';
 import type { GameScreen, Player, PlayerClass, RunState, CombatLog, Equipment, GearSlot, Achievement } from './types';
 import { generateEnemy } from './utils/combat';
@@ -22,80 +27,150 @@ import { ITEM_TEMPLATES } from './data/items';
 
 const PROFILES_STORAGE_KEY = 'eternal_spire_profiles';
 
+const ICON_BASE = "https://api.iconify.design/game-icons";
+const COLOR_PARAM = "?color=%23e2e8f0";
+
 const App: React.FC = () => {
   const [gameScreen, setGameScreen] = useState<GameScreen>('start');
-  const [isLandscape, setIsLandscape] = useState(window.innerWidth > window.innerHeight);
+  const [isLandscape, setIsLandscape] = useState(false);
 
-  // Load profiles from localStorage once on initial component load using a lazy initializer.
+  // Load profiles from localStorage once on initial component load using a lazy initializer with robust error handling.
   const [profiles, setProfiles] = useState<(Player | null)[]>(() => {
     try {
         const savedProfiles = localStorage.getItem(PROFILES_STORAGE_KEY);
         if (savedProfiles) {
             const parsedProfiles = JSON.parse(savedProfiles);
             if (Array.isArray(parsedProfiles) && (parsedProfiles.length === 2)) {
-                // Migration: Ensure new properties exist for old profiles
+                // Migration logic wrapped to prevent crash on malformed data
                 return parsedProfiles.map((p: any) => {
-                    if (p) {
-                        const updatedProfile = { ...p };
-                        if (!updatedProfile.name) updatedProfile.name = updatedProfile.classInfo.name;
-                        
-                        // Migrate from shopRefreshesUsed to the new shopRefreshes object
-                        if (!updatedProfile.shopRefreshes) {
-                            updatedProfile.shopRefreshes = { level: updatedProfile.level, count: 0 };
-                        }
-                        if (updatedProfile.shopRefreshesUsed !== undefined) {
-                            if (updatedProfile.shopRefreshes.level === updatedProfile.level) {
-                                updatedProfile.shopRefreshes.count = updatedProfile.shopRefreshesUsed;
-                            }
-                            delete updatedProfile.shopRefreshesUsed;
-                        }
-
-                        // Stats Migration for Block/Lifesteal
-                        if (updatedProfile.baseStats.blockChance === undefined) updatedProfile.baseStats.blockChance = 0;
-                        if (updatedProfile.baseStats.lifesteal === undefined) updatedProfile.baseStats.lifesteal = 0;
-                        if (updatedProfile.currentStats.blockChance === undefined) updatedProfile.currentStats.blockChance = 0;
-                        if (updatedProfile.currentStats.lifesteal === undefined) updatedProfile.currentStats.lifesteal = 0;
-
-                        // WEAPON SLOT MIGRATION: Weapon -> MainHand
-                        if (updatedProfile.equipment && updatedProfile.equipment.Weapon) {
-                            const oldWeapon = updatedProfile.equipment.Weapon;
-                            // Determine if 2H based on templates or type
-                            let isTwoHanded = false;
-                            if (['Bow', 'Staff', 'Hammer'].includes(oldWeapon.weaponType)) {
-                                 // Simple check for migration. Hammers might be 1H, but let's assume old ones migrate to 2H if they match the new template logic? 
-                                 // Actually, let's just default to checking the name or type.
-                                 // Most Mauls/Greatswords are 2H.
-                                 if (oldWeapon.name.includes("Great") || oldWeapon.name.includes("Maul") || oldWeapon.name.includes("Bow") || oldWeapon.name.includes("Staff")) {
-                                     isTwoHanded = true;
-                                 }
+                    try {
+                        if (p) {
+                            const updatedProfile = { ...p };
+                            
+                            // Safe name migration
+                            if (!updatedProfile.name && updatedProfile.classInfo && updatedProfile.classInfo.name) {
+                                updatedProfile.name = updatedProfile.classInfo.name;
                             }
                             
-                            updatedProfile.equipment.MainHand = {
-                                ...oldWeapon,
-                                slot: 'MainHand',
-                                isTwoHanded: isTwoHanded
-                            };
-                            delete updatedProfile.equipment.Weapon;
-                        }
-
-                        // Item Level Migration
-                        GEAR_SLOTS.forEach(slot => {
-                            if (updatedProfile.equipment && updatedProfile.equipment[slot] && updatedProfile.equipment[slot].itemLevel === undefined) {
-                                updatedProfile.equipment[slot].itemLevel = updatedProfile.level;
+                            // Migrate from shopRefreshesUsed to the new shopRefreshes object
+                            if (!updatedProfile.shopRefreshes) {
+                                updatedProfile.shopRefreshes = { level: updatedProfile.level || 1, count: 0 };
                             }
-                        });
-                        
-                        if (updatedProfile.shopInventory) {
-                             updatedProfile.shopInventory = updatedProfile.shopInventory.map((item: any) => {
-                                 let newItem = { ...item };
-                                 if (newItem.slot === 'Weapon') newItem.slot = 'MainHand';
-                                 if (newItem.itemLevel === undefined) newItem.itemLevel = updatedProfile.level;
-                                 return newItem;
-                             });
+                            if (updatedProfile.shopRefreshesUsed !== undefined) {
+                                if (updatedProfile.shopRefreshes.level === updatedProfile.level) {
+                                    updatedProfile.shopRefreshes.count = updatedProfile.shopRefreshesUsed;
+                                }
+                                delete updatedProfile.shopRefreshesUsed;
+                            }
+
+                            // Stats Migration for Block/Lifesteal
+                            if (!updatedProfile.baseStats) updatedProfile.baseStats = {};
+                            if (!updatedProfile.currentStats) updatedProfile.currentStats = {};
+                            
+                            if (updatedProfile.baseStats.blockChance === undefined) updatedProfile.baseStats.blockChance = 0;
+                            if (updatedProfile.baseStats.lifesteal === undefined) updatedProfile.baseStats.lifesteal = 0;
+                            if (updatedProfile.currentStats.blockChance === undefined) updatedProfile.currentStats.blockChance = 0;
+                            if (updatedProfile.currentStats.lifesteal === undefined) updatedProfile.currentStats.lifesteal = 0;
+
+                            // WEAPON SLOT MIGRATION: Weapon -> MainHand
+                            if (updatedProfile.equipment && updatedProfile.equipment.Weapon) {
+                                const oldWeapon = updatedProfile.equipment.Weapon;
+                                // Determine if 2H based on templates or type
+                                let isTwoHanded = false;
+                                if (oldWeapon.weaponType && ['Bow', 'Staff', 'Hammer'].includes(oldWeapon.weaponType)) {
+                                     if (oldWeapon.name && (oldWeapon.name.includes("Great") || oldWeapon.name.includes("Maul") || oldWeapon.name.includes("Bow") || oldWeapon.name.includes("Staff"))) {
+                                         isTwoHanded = true;
+                                     }
+                                }
+                                
+                                updatedProfile.equipment.MainHand = {
+                                    ...oldWeapon,
+                                    slot: 'MainHand',
+                                    isTwoHanded: isTwoHanded
+                                };
+                                delete updatedProfile.equipment.Weapon;
+                            }
+
+                            // Item Level Migration
+                            if (updatedProfile.equipment) {
+                                GEAR_SLOTS.forEach(slot => {
+                                    if (updatedProfile.equipment[slot] && updatedProfile.equipment[slot].itemLevel === undefined) {
+                                        updatedProfile.equipment[slot].itemLevel = updatedProfile.level || 1;
+                                    }
+                                });
+                            }
+                            
+                            // FIX BROKEN ICONS - COMPREHENSIVE OVERHAUL
+                            const fixIcon = (item: Equipment) => {
+                                // Specific Fixes based on User Reports
+                                if (item.name && item.name.includes('Leather Vest')) item.icon = `${ICON_BASE}/sleeveless-jacket.svg${COLOR_PARAM}`;
+                                if (item.name && item.name.includes('Tower Shield')) item.icon = `${ICON_BASE}/shield.svg${COLOR_PARAM}`;
+                                if (item.name && item.name.includes('Longbow')) item.icon = `${ICON_BASE}/bow-arrow.svg${COLOR_PARAM}`;
+                                if (item.name && item.name.includes('Iron Shield')) item.icon = `${ICON_BASE}/shield.svg${COLOR_PARAM}`;
+
+                                // General Pattern Matching to Replace Potentially Broken Icons
+                                if (item.icon) {
+                                    // Weapons
+                                    if (item.icon.includes('scepter') || item.icon.includes('morning-star')) item.icon = `${ICON_BASE}/flanged-mace.svg${COLOR_PARAM}`;
+                                    if (item.icon.includes('bastard-sword') || item.icon.includes('great-sword') || item.icon.includes('falchion') || item.icon.includes('gladius')) item.icon = `${ICON_BASE}/broadsword.svg${COLOR_PARAM}`; // Simplify to broadsword if confused, but we kept two-handed-sword in template
+                                    if (item.icon.includes('two-handed-sword')) item.icon = `${ICON_BASE}/two-handed-sword.svg${COLOR_PARAM}`; // Ensure 2H sword uses valid icon
+                                    if (item.icon.includes('dagger') || item.icon.includes('bowie-knife') || item.icon.includes('kris') || item.icon.includes('stiletto') || item.icon.includes('sacrificial-dagger')) item.icon = `${ICON_BASE}/plain-dagger.svg${COLOR_PARAM}`;
+                                    if (item.icon.includes('thor-hammer')) item.icon = `${ICON_BASE}/warhammer.svg${COLOR_PARAM}`;
+                                    if (item.icon.includes('bow-string') || item.icon.includes('high-shot') || item.icon.includes('composite-bow')) item.icon = `${ICON_BASE}/bow-arrow.svg${COLOR_PARAM}`;
+                                    if (item.icon.includes('heavy-crossbow')) item.icon = `${ICON_BASE}/crossbow.svg${COLOR_PARAM}`;
+                                    if (item.icon.includes('crystal-wand') || item.icon.includes('crescent-staff')) item.icon = `${ICON_BASE}/wizard-staff.svg${COLOR_PARAM}`;
+                                    if (item.icon.includes('orb-wand')) item.icon = `${ICON_BASE}/crystal-ball.svg${COLOR_PARAM}`;
+                                    
+                                    // Armor / Offhand
+                                    if (item.icon.includes('tower-shield') || item.icon.includes('checked-shield')) item.icon = `${ICON_BASE}/shield.svg${COLOR_PARAM}`;
+                                    if (item.icon.includes('attached-shield')) item.icon = `${ICON_BASE}/round-shield.svg${COLOR_PARAM}`;
+                                    if (item.icon.includes('book-cover')) item.icon = `${ICON_BASE}/spell-book.svg${COLOR_PARAM}`;
+                                    
+                                    // Apparel
+                                    if (item.icon.includes('closed-barbute') || item.icon.includes('crested-helmet') || item.icon.includes('circlet')) item.icon = `${ICON_BASE}/visored-helm.svg${COLOR_PARAM}`;
+                                    if (item.icon.includes('wizard-hat')) item.icon = `${ICON_BASE}/pointy-hat.svg${COLOR_PARAM}`;
+                                    if (item.icon.includes('cultist')) item.icon = `${ICON_BASE}/hood.svg${COLOR_PARAM}`;
+                                    if (item.icon.includes('abdominal-armor') || item.icon.includes('plate-armor')) item.icon = `${ICON_BASE}/breastplate.svg${COLOR_PARAM}`;
+                                    if (item.icon.includes('ninja-armor') || item.icon.includes('studded-leather')) item.icon = `${ICON_BASE}/leather-armor.svg${COLOR_PARAM}`;
+                                    if (item.icon.includes('tunic') || item.icon.includes('leather-vest')) item.icon = `${ICON_BASE}/sleeveless-jacket.svg${COLOR_PARAM}`;
+                                    if (item.icon.includes('cloak')) item.icon = `${ICON_BASE}/robe.svg${COLOR_PARAM}`;
+                                    
+                                    // Boots/Gloves
+                                    if (item.icon.includes('magic-boots') || item.icon.includes('sandals')) item.icon = `${ICON_BASE}/boots.svg${COLOR_PARAM}`;
+                                    if (item.icon.includes('walking-boot') || item.icon.includes('light-shoes')) item.icon = `${ICON_BASE}/leather-boot.svg${COLOR_PARAM}`;
+                                    if (item.icon.includes('armored-boot') || item.icon.includes('greaves')) item.icon = `${ICON_BASE}/metal-boot.svg${COLOR_PARAM}`;
+                                    
+                                    if (item.icon.includes('leather-glove') || item.icon.includes('winter-gloves') || item.icon.includes('magic-palm') || item.icon.includes('fingerless-gloves') || item.icon.includes('spellbinders')) item.icon = `${ICON_BASE}/gloves.svg${COLOR_PARAM}`;
+                                    if (item.icon.includes('metal-hand') || item.icon.includes('iron-gauntlets')) item.icon = `${ICON_BASE}/mailed-fist.svg${COLOR_PARAM}`;
+                                    if (item.icon.includes('mystic-wraps') || item.icon.includes('cloth-wraps')) item.icon = `${ICON_BASE}/hand-bandage.svg${COLOR_PARAM}`;
+                                }
+                                return item;
+                            };
+
+                            if (updatedProfile.equipment) {
+                                (Object.keys(updatedProfile.equipment) as GearSlot[]).forEach(slot => {
+                                    if (updatedProfile.equipment[slot]) {
+                                        updatedProfile.equipment[slot] = fixIcon(updatedProfile.equipment[slot]!);
+                                    }
+                                });
+                            }
+                            
+                            if (updatedProfile.shopInventory) {
+                                updatedProfile.shopInventory = updatedProfile.shopInventory.map((item: any) => {
+                                     let newItem = { ...item };
+                                     if (newItem.slot === 'Weapon') newItem.slot = 'MainHand';
+                                     if (newItem.itemLevel === undefined) newItem.itemLevel = updatedProfile.level || 1;
+                                     return fixIcon(newItem);
+                                 });
+                            }
+
+                            return updatedProfile;
                         }
-
-
-                        return updatedProfile;
+                    } catch (migrationError) {
+                        console.error("Error migrating profile:", migrationError);
+                        // Return profile as-is if migration fails, or null if critically broken. 
+                        // Returning p prevents data loss, though might be unstable.
+                        return p;
                     }
                     return p;
                 });
@@ -121,14 +196,42 @@ const App: React.FC = () => {
       }
   }, [profiles]);
 
-  // Effect to listen for orientation/resize changes
+  // Effect to listen for orientation changes using SAFE checks
   useEffect(() => {
-    const handleResize = () => {
-      setIsLandscape(window.innerWidth > window.innerHeight);
+    const handleOrientationChange = () => {
+      try {
+          if (typeof screen !== 'undefined' && screen.orientation && screen.orientation.type) {
+            setIsLandscape(screen.orientation.type.includes('landscape'));
+          } else if (typeof window !== 'undefined') {
+             // Fallback for devices without screen.orientation API
+             const mql = window.matchMedia("(orientation: landscape)");
+             setIsLandscape(mql.matches);
+          }
+      } catch (e) {
+          console.warn("Orientation check failed", e);
+      }
     };
 
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    try {
+        if (typeof screen !== 'undefined' && screen.orientation) {
+            handleOrientationChange(); 
+            screen.orientation.addEventListener('change', handleOrientationChange);
+            return () => {
+                screen.orientation.removeEventListener('change', handleOrientationChange);
+            };
+        } else {
+            const mediaQuery = window.matchMedia("(orientation: landscape)");
+            const handleMediaQueryChange = (e: MediaQueryListEvent) => setIsLandscape(e.matches);
+            
+            setIsLandscape(mediaQuery.matches); 
+            mediaQuery.addEventListener('change', handleMediaQueryChange);
+            return () => {
+                mediaQuery.removeEventListener('change', handleMediaQueryChange);
+            };
+        }
+    } catch (e) {
+        console.warn("Failed to setup orientation listener", e);
+    }
   }, []);
 
 
@@ -192,11 +295,11 @@ const App: React.FC = () => {
     let startingWeapon: Equipment | null = null;
 
     if (selectedClass.name === 'Warrior') {
-        startingWeapon = { name: 'Dusty Sword', slot: 'MainHand', icon: '⚔️', stats: { str: 1, blockChance: 5 }, rarity: 'Common', itemLevel: 1, weaponType: 'Sword', isTwoHanded: false };
+        startingWeapon = { name: 'Dusty Sword', slot: 'MainHand', icon: `${ICON_BASE}/broadsword.svg${COLOR_PARAM}`, stats: { str: 1, blockChance: 5 }, rarity: 'Common', itemLevel: 1, weaponType: 'Sword', isTwoHanded: false };
     } else if (selectedClass.name === 'Rogue') {
-        startingWeapon = { name: 'Rusty Dagger', slot: 'MainHand', icon: '🔪', stats: { dex: 1, critRate: 2 }, rarity: 'Common', itemLevel: 1, weaponType: 'Dagger', isTwoHanded: false };
+        startingWeapon = { name: 'Rusty Dagger', slot: 'MainHand', icon: `${ICON_BASE}/plain-dagger.svg${COLOR_PARAM}`, stats: { dex: 1, critRate: 2 }, rarity: 'Common', itemLevel: 1, weaponType: 'Dagger', isTwoHanded: false };
     } else if (selectedClass.name === 'Mage') {
-        startingWeapon = { name: 'Rusty Staff', slot: 'MainHand', icon: '🪄', stats: { int: 1, lifesteal: 2 }, rarity: 'Common', itemLevel: 1, weaponType: 'Staff', isTwoHanded: true };
+        startingWeapon = { name: 'Rusty Staff', slot: 'MainHand', icon: `${ICON_BASE}/wizard-staff.svg${COLOR_PARAM}`, stats: { int: 1, lifesteal: 2 }, rarity: 'Common', itemLevel: 1, weaponType: 'Staff', isTwoHanded: true };
     }
     
     if (startingWeapon) {
@@ -204,7 +307,7 @@ const App: React.FC = () => {
     }
 
     const initialPlayer: Player = {
-      name: newGameName || selectedClass.name, // Use custom name or fallback to class name
+      name: newGameName || selectedClass.name,
       level: 1,
       xp: 0,
       xpToNextLevel: 100,
@@ -244,8 +347,6 @@ const App: React.FC = () => {
   
   const handleAccountLevelUp = useCallback((currentPlayer: Player): Player => {
       let updatedPlayer = { ...currentPlayer };
-      // const levelBeforeUpdate = updatedPlayer.level; // Unused
-
       while (updatedPlayer.xp >= updatedPlayer.xpToNextLevel) {
           updatedPlayer.xp -= updatedPlayer.xpToNextLevel;
           updatedPlayer.level += 1;
@@ -296,7 +397,8 @@ const App: React.FC = () => {
     const activePlayer = activeProfileIndex !== null ? profiles[activeProfileIndex] : null;
     if (!activePlayer) return;
 
-    const initialEnemy = generateEnemy(1);
+    // Pass player level to generator for better scaling/elite chance
+    const initialEnemy = generateEnemy(1, activePlayer.level);
     setRunState({
       floor: 1,
       runLevel: 1,
@@ -317,6 +419,7 @@ const App: React.FC = () => {
     setRunState(prevRunState => {
         if (!prevRunState) return null;
         
+        const activePlayer = activeProfileIndex !== null ? profiles[activeProfileIndex] : null;
         const nextFloor = prevRunState.floor + 1;
 
         updateCurrentPlayer(player => {
@@ -328,7 +431,7 @@ const App: React.FC = () => {
             return newPlayer;
         });
 
-        const nextEnemy = generateEnemy(nextFloor);
+        const nextEnemy = generateEnemy(nextFloor, activePlayer ? activePlayer.level : 1);
         addLog(`You advance to Floor ${nextFloor}. A ${nextEnemy.name} appears!`, 'text-[#D6721C]');
 
         return {
@@ -338,7 +441,7 @@ const App: React.FC = () => {
             pendingLoot: null,
         };
     });
-  }, [updateCurrentPlayer, updateAchievementProgress]);
+  }, [updateCurrentPlayer, updateAchievementProgress, activeProfileIndex, profiles]);
 
   const handleAttack = useCallback(() => {
     const activePlayer = activeProfileIndex !== null ? profiles[activeProfileIndex] : null;
@@ -350,7 +453,6 @@ const App: React.FC = () => {
     };
     let logs: { message: string, color: CombatLog['color'] }[] = [];
     let playerDefeated = false;
-    // let didPlayerLevelUpInRun = false; // Unused variable
     let lootDropped: Equipment | null = null;
   
     if (Math.random() * 100 < newRunState.currentEnemy.stats.evasion) {
@@ -376,7 +478,16 @@ const App: React.FC = () => {
       logs.push({ message: `You have defeated the ${newRunState.currentEnemy.name}!`, color: 'text-[#D6721C]' });
       newRunState.enemiesKilled += 1;
       
+      // Elite bonus logic handled in loot gen or XP calculation
+      let xpGained = newRunState.currentEnemy.xpReward;
+      
       const loot = generateLoot(newRunState.floor, activePlayer.level);
+      
+      // Double shard chance for Elites
+      if (newRunState.currentEnemy.isElite && Math.random() < 0.5) {
+          loot.shards += Math.floor(Math.random() * 10) + 5;
+      }
+      
       if (loot.equipment) {
           lootDropped = loot.equipment;
           newRunState.pendingLoot = loot.equipment;
@@ -388,7 +499,6 @@ const App: React.FC = () => {
       nextPlayer.totalEnemiesKilled = (nextPlayer.totalEnemiesKilled || 0) + 1;
       nextPlayer = updateAchievementProgress(nextPlayer, newRunState, 'slay', newRunState.currentEnemy.id);
 
-      const xpGained = newRunState.currentEnemy.xpReward;
       newRunState.runXp += xpGained; 
       nextPlayer.xp += xpGained;
       nextPlayer.totalAccumulatedXp = (nextPlayer.totalAccumulatedXp || 0) + xpGained;
@@ -408,7 +518,6 @@ const App: React.FC = () => {
       }
 
       if (newRunState.runXp >= newRunState.runXpToNextLevel) {
-        //   didPlayerLevelUpInRun = true;
           newRunState.runXp -= newRunState.runXpToNextLevel;
           newRunState.runLevel += 1;
           newRunState.runXpToNextLevel = Math.floor(newRunState.runXpToNextLevel * 1.8);
@@ -486,7 +595,7 @@ const App: React.FC = () => {
 
     const lootItem = runState.pendingLoot;
     if (equip) {
-        // Validation: Cannot equip OffHand if using 2H or no MainHand (Rule: "off hand can only be equiped if a one hand weapon is equiped")
+        // Validation: Cannot equip OffHand if using 2H or no MainHand
         if (lootItem.slot === 'OffHand') {
             const mainHand = activePlayer.equipment.MainHand;
             if (!mainHand || mainHand.isTwoHanded) {
@@ -507,7 +616,6 @@ const App: React.FC = () => {
                     delete updatedPlayer.equipment.OffHand; // Unequip offhand if 2H equipped
                 }
             } else if (slot === 'OffHand') {
-                // If we are here, we passed the validation above, so we know MainHand exists and is NOT 2H.
                 updatedPlayer.equipment.OffHand = lootItem;
             } else {
                 updatedPlayer.equipment[slot] = lootItem;
@@ -811,7 +919,6 @@ const App: React.FC = () => {
         }
         break;
     }
-    // Fallback to start screen if state is invalid
     setGameScreen('start');
     return <StartScreen onStart={handleStartGame} />;
   };

@@ -1,3 +1,5 @@
+
+
 import React from 'react';
 import { CLASSES } from '../../constants';
 import type { PlayerClass, Stats } from '../../types';
@@ -26,7 +28,13 @@ const StatDisplay: React.FC<{ stats: Stats }> = ({ stats }) => (
 const ClassCard: React.FC<{ playerClass: PlayerClass; onSelect: () => void }> = ({ playerClass, onSelect }) => (
   <div className="bg-slate-800 border-2 border-slate-700 rounded-xl p-2 flex flex-col text-center transform hover:scale-105 hover:border-[#D6721C] transition-all duration-300 shadow-lg h-full">
     <div className="flex items-center justify-center mb-1">
-      <span className="text-2xl mr-2">{playerClass.icon}</span>
+      <div className="w-12 h-12 mr-2">
+         {playerClass.icon.startsWith('http') ? (
+            <img src={playerClass.icon} alt={playerClass.name} className="w-full h-full object-contain" />
+        ) : (
+             <span className="text-2xl">{playerClass.icon}</span>
+        )}
+      </div>
       <h3 className="text-sm font-bold text-[#D6721C]">{playerClass.name}</h3>
     </div>
     <p className="text-xs text-slate-400 mb-2 flex-grow">{playerClass.description}</p>

@@ -19,7 +19,13 @@ const StatsScreen: React.FC<StatsScreenProps> = ({ player, onExit }) => {
             <div className="bg-slate-800 border border-slate-700 rounded-xl p-3 shadow-lg w-full max-w-md">
                 <div className="flex justify-between items-center border-b-2 border-slate-700 pb-1.5 mb-3">
                     <h2 className="text-lg font-bold text-[#D6721C]">Account Statistics</h2>
-                    <div className="text-2xl">{player.classInfo.icon}</div>
+                    <div className="w-8 h-8">
+                         {player.classInfo.icon.startsWith('http') ? (
+                            <img src={player.classInfo.icon} alt={player.classInfo.name} className="w-full h-full object-contain" />
+                        ) : (
+                            <span className="text-2xl">{player.classInfo.icon}</span>
+                        )}
+                    </div>
                 </div>
 
                 <div className="grid grid-cols-1 gap-1.5 mb-4">

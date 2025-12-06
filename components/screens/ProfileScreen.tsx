@@ -1,3 +1,5 @@
+
+
 import React, { useState, useEffect } from 'react';
 import type { Player } from '../../types';
 
@@ -33,7 +35,13 @@ const ProfileSlot: React.FC<{
         className="bg-slate-800 border-2 border-slate-700 rounded-xl p-3 flex flex-col text-left transition-all duration-300 shadow-lg h-full"
       >
         <div className="flex items-center mb-1">
-            <span className="text-2xl mr-2">{profile.classInfo.icon}</span>
+            <div className="w-10 h-10 mr-2">
+                 {profile.classInfo.icon.startsWith('http') ? (
+                    <img src={profile.classInfo.icon} alt={profile.classInfo.name} className="w-full h-full object-contain" />
+                ) : (
+                    <span className="text-2xl">{profile.classInfo.icon}</span>
+                )}
+            </div>
             <div>
                 <h3 className="text-base font-bold text-[#D6721C]">{profile.name}</h3>
                 <p className="text-sm text-slate-300">Level {profile.level} {profile.classInfo.name}</p>

@@ -1,5 +1,4 @@
 
-
 import React, { useState, useEffect } from 'react';
 import type { Player, EquipmentSlot, Equipment } from '../../types';
 import { RARITY_COLORS } from '../../data/items';
@@ -12,6 +11,9 @@ interface MainGameScreenProps {
   onEnterAchievements: () => void;
   onEnterStats: () => void;
 }
+
+const ICON_BASE = "https://api.iconify.design/game-icons";
+const COLOR_PARAM = "?color=%23e2e8f0";
 
 // Compact Stat Row for the side panel
 const StatRow: React.FC<{ label: string; value: string | number; color?: string; subLabel?: string }> = ({ label, value, color, subLabel }) => (
@@ -83,7 +85,15 @@ const EquipmentSlotDisplay: React.FC<{
     return (
         <div className="relative group">
             <div className={containerClass}>
-                    {item ? <p className="text-2xl drop-shadow-md">{item.icon}</p> : <p className="text-[9px] text-slate-600 uppercase font-bold tracking-wider">{slot}</p>}
+                    {item ? (
+                        item.icon.startsWith('http') ? (
+                            <img src={item.icon} alt={item.name} className="w-full h-full object-contain" />
+                        ) : (
+                            <p className="text-2xl drop-shadow-md">{item.icon}</p>
+                        )
+                    ) : (
+                        <p className="text-[9px] text-slate-600 uppercase font-bold tracking-wider">{slot}</p>
+                    )}
             </div>
             {renderTooltip()}
         </div>
@@ -112,9 +122,13 @@ const BagSlot: React.FC<{ item?: BagItem; index: number }> = ({ item, index }) =
         <div className={`aspect-square rounded-md border flex items-center justify-center relative group transition-colors duration-200 ${item ? 'bg-slate-800 border-slate-600 hover:border-[#D6721C] cursor-help' : 'bg-slate-900/40 border-slate-700 hover:border-slate-500'}`}>
             {item && (
                 <>
-                    <span className="text-xl drop-shadow-sm">{item.icon}</span>
+                    {item.icon.startsWith('http') ? (
+                         <img src={item.icon} alt={item.name} className="w-3/4 h-3/4 object-contain" />
+                    ) : (
+                        <span className="text-xl drop-shadow-sm">{item.icon}</span>
+                    )}
                     {item.count > 1 && (
-                        <span className="absolute bottom-0.5 right-1 text-[9px] font-bold text-slate-200">
+                        <span className="absolute bottom-0.5 right-1 text-[9px] font-bold text-slate-200 bg-slate-900/80 px-1 rounded">
                             x{item.count}
                         </span>
                     )}
@@ -146,7 +160,7 @@ const MainGameScreen: React.FC<MainGameScreenProps> = ({ player, onExitToProfile
   if (player.potionCount > 0) {
       bagItems.push({
           id: 'potion',
-          icon: '🧪',
+          icon: `${ICON_BASE}/health-potion.svg${COLOR_PARAM}`,
           name: 'Health Potion',
           count: player.potionCount,
           description: 'Restores 50 HP.',
@@ -195,7 +209,13 @@ const MainGameScreen: React.FC<MainGameScreenProps> = ({ player, onExitToProfile
       <div className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 shadow-lg flex-shrink-0 flex flex-col gap-2 relative overflow-hidden mb-3">
         <div className="flex items-center justify-between z-10">
             <div className="flex items-center gap-3">
-                 <div className="text-3xl bg-slate-900/50 rounded-lg p-1 border border-slate-700">{player.classInfo.icon}</div>
+                 <div className="w-12 h-12 bg-slate-900/50 rounded-lg p-1 border border-slate-700 flex items-center justify-center">
+                    {player.classInfo.icon.startsWith('http') ? (
+                         <img src={player.classInfo.icon} alt={player.classInfo.name} className="w-full h-full object-contain" />
+                    ) : (
+                        <span className="text-3xl">{player.classInfo.icon}</span>
+                    )}
+                 </div>
                  <div>
                     <h2 className="text-lg font-bold text-[#D6721C] leading-tight">{player.name}</h2>
                     <p className="text-xs text-slate-400 font-medium">Lvl {player.level} {player.classInfo.name}</p>

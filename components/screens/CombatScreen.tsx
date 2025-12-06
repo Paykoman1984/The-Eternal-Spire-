@@ -63,7 +63,13 @@ const ItemCard: React.FC<{ title: string, item: Equipment | null }> = ({ title, 
             {item ? (
                 <>
                     <div className="flex items-center mb-1.5">
-                        <span className="text-2xl mr-2">{item.icon}</span>
+                        <div className="w-10 h-10 mr-2 flex-shrink-0">
+                             {item.icon.startsWith('http') ? (
+                                <img src={item.icon} alt={item.name} className="w-full h-full object-contain" />
+                            ) : (
+                                <span className="text-2xl">{item.icon}</span>
+                            )}
+                        </div>
                         <div className="flex flex-col">
                             <span className={`font-bold text-sm ${rarityColor}`}>{item.name}</span>
                             <div className="flex justify-between w-full pr-1">
@@ -225,7 +231,13 @@ const CombatScreen: React.FC<CombatScreenProps> = ({ player, runState, logs, onA
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2 flex-shrink-0">
           <div className="bg-slate-800 border border-slate-700 rounded-xl p-2 shadow-lg">
             <div className="flex items-center mb-1.5">
-              <span className="text-2xl mr-2">{player.classInfo.icon}</span>
+              <div className="w-8 h-8 mr-2">
+                 {player.classInfo.icon.startsWith('http') ? (
+                    <img src={player.classInfo.icon} alt={player.classInfo.name} className="w-full h-full object-contain" />
+                ) : (
+                    <span className="text-2xl">{player.classInfo.icon}</span>
+                )}
+              </div>
               <h3 className="text-sm font-bold text-slate-200">{player.name}</h3>
             </div>
             <HealthBar current={runState.playerCurrentHpInRun} max={player.currentStats.maxHp} label="HP" />
@@ -247,8 +259,16 @@ const CombatScreen: React.FC<CombatScreenProps> = ({ player, runState, logs, onA
           <div className="bg-slate-800 border border-slate-700 rounded-xl p-2 shadow-lg">
             <div className="relative group w-max mx-auto md:mx-0">
               <div className="flex items-center mb-1.5 cursor-help">
-                  <span className="text-2xl mr-2">{runState.currentEnemy.icon}</span>
-                  <h3 className="text-sm font-bold text-slate-200">{runState.currentEnemy.name}</h3>
+                  <div className="w-10 h-10 mr-2">
+                      {runState.currentEnemy.icon.startsWith('http') ? (
+                            <img src={runState.currentEnemy.icon} alt={runState.currentEnemy.name} className="w-full h-full object-contain" />
+                        ) : (
+                            <span className="text-2xl">{runState.currentEnemy.icon}</span>
+                        )}
+                  </div>
+                  <h3 className={`text-sm font-bold ${runState.currentEnemy.isElite ? 'text-yellow-400 drop-shadow-md' : 'text-slate-200'}`}>
+                      {runState.currentEnemy.name}
+                  </h3>
               </div>
               
               <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-32 invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-opacity duration-300 bg-slate-900 border border-[#D6721C] rounded-md shadow-lg p-1.5 text-xs z-30 pointer-events-none">

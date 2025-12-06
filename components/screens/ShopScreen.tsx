@@ -1,5 +1,4 @@
 
-
 import React from 'react';
 import type { Player, Equipment } from '../../types';
 import { RARITY_COLORS } from '../../data/items';
@@ -15,6 +14,9 @@ interface ShopScreenProps {
 const POTION_COST = 50;
 const REFRESH_COST = 1000;
 const MAX_REFRESHES = 3;
+
+const ICON_BASE = "https://api.iconify.design/game-icons";
+const COLOR_PARAM = "?color=%23e2e8f0";
 
 const ShopScreen: React.FC<ShopScreenProps> = ({ player, onExit, onBuyPotion, onBuyShopItem, onRefresh }) => {
     const canBuyPotion = player.eternalShards >= POTION_COST && player.potionCount < 5;
@@ -58,7 +60,9 @@ const ShopScreen: React.FC<ShopScreenProps> = ({ player, onExit, onBuyPotion, on
                     {/* Potion Item */}
                     <div className="bg-slate-900/70 border border-slate-700 rounded-lg p-1.5 flex items-center justify-between">
                         <div className="flex items-center">
-                            <span className="text-2xl mr-2">🧪</span>
+                            <div className="w-10 h-10 mr-2">
+                                <img src={`${ICON_BASE}/health-potion.svg${COLOR_PARAM}`} alt="Potion" className="w-full h-full object-contain" />
+                            </div>
                             <div>
                                 <p className="text-sm font-bold text-slate-200">Health Potion</p>
                                 <p className="text-xs text-slate-400">Restores 50 HP (Max: 5)</p>
@@ -93,7 +97,13 @@ const ShopScreen: React.FC<ShopScreenProps> = ({ player, onExit, onBuyPotion, on
                                 return (
                                     <div key={index} className="bg-slate-900/70 border border-slate-700 rounded-lg p-1.5 flex items-center justify-between mb-1.5">
                                         <div className="flex items-center overflow-hidden">
-                                            <span className="text-2xl mr-2">{item.icon}</span>
+                                            <div className="w-10 h-10 mr-2 flex-shrink-0">
+                                                 {item.icon.startsWith('http') ? (
+                                                    <img src={item.icon} alt={item.name} className="w-full h-full object-contain" />
+                                                ) : (
+                                                    <span className="text-2xl">{item.icon}</span>
+                                                )}
+                                            </div>
                                             <div className="flex-1 min-w-0">
                                                 <div className="flex items-baseline gap-2">
                                                     <p className={`text-sm font-bold truncate ${rarityColor}`}>{item.name}</p>

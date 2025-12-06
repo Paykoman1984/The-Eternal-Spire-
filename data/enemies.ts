@@ -1,14 +1,16 @@
 
-
 import type { Enemy } from '../types';
 
 type EnemyData = Omit<Enemy, 'stats' | 'id' | 'level'> & { id: string; stats: Omit<Enemy['stats'], 'hp'> };
+
+const ICON_BASE = "https://api.iconify.design/game-icons";
+const COLOR_PARAM = "?color=%23e2e8f0";
 
 export const BASE_ENEMIES: Record<string, EnemyData> = {
   SLIME: {
     id: 'SLIME',
     name: 'Slime', 
-    icon: '💧', 
+    icon: `${ICON_BASE}/slime.svg${COLOR_PARAM}`, 
     minFloor: 1,
     stats: { maxHp: 20, attack: 4, defense: 0, evasion: 0 }, 
     xpReward: 10 
@@ -16,7 +18,7 @@ export const BASE_ENEMIES: Record<string, EnemyData> = {
   BAT: {
     id: 'BAT',
     name: 'Bat',
-    icon: '🦇',
+    icon: `${ICON_BASE}/bat.svg${COLOR_PARAM}`,
     minFloor: 1,
     stats: { maxHp: 15, attack: 5, defense: 0, evasion: 15 },
     xpReward: 12
@@ -24,7 +26,7 @@ export const BASE_ENEMIES: Record<string, EnemyData> = {
   GOBLIN: {
     id: 'GOBLIN',
     name: 'Goblin', 
-    icon: '👺', 
+    icon: `${ICON_BASE}/goblin-head.svg${COLOR_PARAM}`, 
     minFloor: 2,
     stats: { maxHp: 30, attack: 7, defense: 2, evasion: 5 }, 
     xpReward: 15 
@@ -32,7 +34,7 @@ export const BASE_ENEMIES: Record<string, EnemyData> = {
   SKELETON: {
     id: 'SKELETON',
     name: 'Skeleton',
-    icon: '💀',
+    icon: `${ICON_BASE}/skeleton.svg${COLOR_PARAM}`,
     minFloor: 4,
     stats: { maxHp: 45, attack: 9, defense: 6, evasion: 2 },
     xpReward: 20
@@ -40,7 +42,7 @@ export const BASE_ENEMIES: Record<string, EnemyData> = {
   SPIDER: {
     id: 'SPIDER',
     name: 'Giant Spider',
-    icon: '🕷️',
+    icon: `${ICON_BASE}/spider-face.svg${COLOR_PARAM}`,
     minFloor: 5,
     stats: { maxHp: 35, attack: 11, defense: 2, evasion: 12 },
     xpReward: 25
@@ -48,7 +50,7 @@ export const BASE_ENEMIES: Record<string, EnemyData> = {
   ORC: {
     id: 'ORC',
     name: 'Orc',
-    icon: '👹',
+    icon: `${ICON_BASE}/orc-head.svg${COLOR_PARAM}`,
     minFloor: 7,
     stats: { maxHp: 70, attack: 13, defense: 4, evasion: 0 },
     xpReward: 30
@@ -56,16 +58,16 @@ export const BASE_ENEMIES: Record<string, EnemyData> = {
   WRAITH: {
     id: 'WRAITH',
     name: 'Wraith',
-    icon: '👻',
+    icon: `${ICON_BASE}/spectre.svg${COLOR_PARAM}`,
     minFloor: 9,
     stats: { maxHp: 40, attack: 12, defense: 5, evasion: 15 },
     xpReward: 35
   },
-  // Bosses (minFloor logic handled by specific floor check in combat.ts, but good to have)
+  // Bosses
   GOBLIN_CHAMPION: {
     id: 'GOBLIN_CHAMPION',
     name: 'Goblin Champion', 
-    icon: '👹', 
+    icon: `${ICON_BASE}/troll.svg${COLOR_PARAM}`, 
     minFloor: 10,
     stats: { maxHp: 150, attack: 18, defense: 8, evasion: 5 }, 
     xpReward: 100 

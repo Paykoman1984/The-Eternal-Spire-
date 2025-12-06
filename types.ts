@@ -78,6 +78,7 @@ export interface Enemy {
   level: number;
   icon: string;
   minFloor: number; 
+  isElite?: boolean;
   stats: {
     maxHp: number;
     hp: number;
@@ -107,7 +108,7 @@ export interface RunState {
 export interface CombatLog {
     id: number;
     message: string;
-    color: 'text-green-400' | 'text-[#D6721C]' | 'text-slate-200' | 'text-purple-400' | 'text-red-400' | 'text-cyan-400' | 'text-pink-400';
+    color: 'text-green-400' | 'text-[#D6721C]' | 'text-slate-200' | 'text-purple-400' | 'text-red-400' | 'text-cyan-400' | 'text-pink-400' | 'text-yellow-400';
 }
 
 // --- Achievements ---

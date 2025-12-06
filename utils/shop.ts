@@ -1,9 +1,18 @@
 
+
 import type { Equipment, Player, GearSlot, Stats, Rarity } from '../types';
 import { GEAR_SLOTS } from '../constants';
 import { ITEM_TEMPLATES, ITEM_PREFIXES, STAT_WEIGHTS } from '../data/items';
 
 const getRandom = <T>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
+
+const RARITY_MULTIPLIERS: Record<Rarity, number> = {
+    Common: 1.0,
+    Uncommon: 1.3,
+    Rare: 1.6,
+    Epic: 2.1,
+    Legendary: 3.0,
+};
 
 function generateShopItem(playerLevel: number, slot: GearSlot): Equipment {
     const template = getRandom(ITEM_TEMPLATES[slot]);
@@ -12,28 +21,22 @@ function generateShopItem(playerLevel: number, slot: GearSlot): Equipment {
     const roll = Math.random() * 100 + (playerLevel * 0.5);
     
     let rarity: Rarity;
-    let statBudgetMultiplier: number;
     let targetStatCount = 1;
 
     if (roll < 50) {
         rarity = 'Common';
-        statBudgetMultiplier = 1;
         targetStatCount = 1;
     } else if (roll < 80) {
         rarity = 'Uncommon';
-        statBudgetMultiplier = 1.3;
         targetStatCount = Math.random() < 0.3 ? 2 : 1;
     } else if (roll < 95) {
         rarity = 'Rare';
-        statBudgetMultiplier = 2.0;
         targetStatCount = 2;
     } else if (roll < 99) {
         rarity = 'Epic';
-        statBudgetMultiplier = 3.0;
         targetStatCount = Math.random() < 0.5 ? 3 : 2;
     } else {
         rarity = 'Legendary';
-        statBudgetMultiplier = 4.5;
         targetStatCount = 3;
     }
 
@@ -41,11 +44,15 @@ function generateShopItem(playerLevel: number, slot: GearSlot): Equipment {
     const prefix = getRandom(prefixes);
     const name = `${prefix} ${template.name}`;
 
-    const baseBudget = 1 + Math.floor(playerLevel / 3);
-    const statBudget = Math.max(1, Math.floor(baseBudget * statBudgetMultiplier));
+    // --- NEW STAT SCALING LOGIC (Same as Loot) ---
+    const itemLevel = playerLevel; // Shop items match player level
+    
+    const baseBudget = 3 + itemLevel;
+    const rarityMultiplier = RARITY_MULTIPLIERS[rarity];
+    const statPointsBudget = Math.floor(baseBudget * rarityMultiplier);
     
     const possibleStats = [...template.possibleStats];
-    const numToPick = Math.min(targetStatCount, possibleStats.length, statBudget);
+    const numToPick = Math.min(targetStatCount, possibleStats.length, statPointsBudget);
 
     // Select distinct stats
     const chosenStats: (keyof Stats)[] = [];
@@ -65,7 +72,7 @@ function generateShopItem(playerLevel: number, slot: GearSlot): Equipment {
     });
 
     // 2. Distribute remaining
-    let remainingBudget = statBudget - chosenStats.length;
+    let remainingBudget = Math.max(0, statPointsBudget - chosenStats.length);
     for(let i = 0; i < remainingBudget; i++) {
         const randomStat = getRandom(chosenStats);
         newStats[randomStat] = (newStats[randomStat] || 0) + STAT_WEIGHTS[randomStat];
@@ -78,17 +85,15 @@ function generateShopItem(playerLevel: number, slot: GearSlot): Equipment {
     });
 
     // Calculate item power for cost
-    const itemPower = Object.entries(newStats).reduce((sum, [stat, value]) => {
-        const weight = STAT_WEIGHTS[stat as keyof Stats] || 1;
-        return sum + (value / weight) * (5 + playerLevel);
-    }, 0);
+    // We can use the statPointsBudget as a proxy for power
+    const itemPower = statPointsBudget * 5; 
 
-    // Rarity multiplier for cost
+    // Rarity multiplier for cost (Visual prestige tax)
     let costMultiplier = 1;
-    if (rarity === 'Uncommon') costMultiplier = 1.5;
-    if (rarity === 'Rare') costMultiplier = 3;
-    if (rarity === 'Epic') costMultiplier = 6;
-    if (rarity === 'Legendary') costMultiplier = 10;
+    if (rarity === 'Uncommon') costMultiplier = 1.2;
+    if (rarity === 'Rare') costMultiplier = 1.5;
+    if (rarity === 'Epic') costMultiplier = 2.0;
+    if (rarity === 'Legendary') costMultiplier = 3.0;
 
     const cost = Math.floor(itemPower * 5 * costMultiplier);
 
@@ -97,6 +102,7 @@ function generateShopItem(playerLevel: number, slot: GearSlot): Equipment {
         name,
         stats: newStats,
         rarity,
+        itemLevel,
         cost: Math.round(cost / 10) * 10,
     };
 

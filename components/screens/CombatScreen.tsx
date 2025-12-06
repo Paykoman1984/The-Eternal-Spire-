@@ -1,4 +1,5 @@
 
+
 import React, { useRef, useEffect } from 'react';
 import type { Player, RunState, CombatLog, Equipment, Stats } from '../../types';
 import { RARITY_COLORS } from '../../data/items';
@@ -31,10 +32,10 @@ const HealthBar: React.FC<{ current: number; max: number; label: string }> = ({ 
   );
 };
 
-const CombatStatDisplay: React.FC<{ label: string; value: string | number }> = ({ label, value }) => (
+const CombatStatDisplay: React.FC<{ label: string; value: string | number; color?: string }> = ({ label, value, color }) => (
     <div className="bg-slate-900/50 p-0.5 rounded text-center border border-slate-600">
         <p className="text-[9px] font-bold text-slate-400 uppercase">{label}</p>
-        <p className="text-xs font-bold text-slate-200">{value}</p>
+        <p className={`text-xs font-bold ${color || 'text-slate-200'}`}>{value}</p>
     </div>
 );
 
@@ -65,16 +66,26 @@ const ItemCard: React.FC<{ title: string, item: Equipment | null }> = ({ title, 
                         <span className="text-2xl mr-2">{item.icon}</span>
                         <div className="flex flex-col">
                             <span className={`font-bold text-sm ${rarityColor}`}>{item.name}</span>
-                            <span className="text-[10px] text-slate-500">{item.slot} • {item.rarity || 'Common'}{item.weaponType ? ` (${item.weaponType})` : ''}</span>
+                            <div className="flex justify-between w-full pr-1">
+                                <span className="text-[10px] text-slate-500">
+                                    {item.slot} • {item.rarity || 'Common'}
+                                    {item.weaponType ? ` (${item.weaponType})` : ''}
+                                    {item.isTwoHanded ? ' (2H)' : ''}
+                                </span>
+                                <span className="text-[10px] text-slate-400 font-semibold">iLvl {item.itemLevel}</span>
+                            </div>
                         </div>
                     </div>
                     <div className="space-y-0.5">
-                        {Object.entries(item.stats).map(([stat, value]) => (
-                            <div key={stat} className="flex justify-between text-xs text-slate-300">
-                                <span>{stat.toUpperCase()}</span>
-                                <span>+{value}</span>
-                            </div>
-                        ))}
+                        {Object.entries(item.stats).map(([stat, value]) => {
+                             if (stat === 'itemLevel') return null;
+                             return (
+                                <div key={stat} className="flex justify-between text-xs text-slate-300">
+                                    <span>{stat.toUpperCase()}</span>
+                                    <span>+{value}</span>
+                                </div>
+                             );
+                        })}
                     </div>
                 </>
             ) : (
@@ -93,7 +104,13 @@ const LootDecision: React.FC<{
 }> = ({ player, newItem, oldItem, onLootDecision }) => {
     const allStats = Array.from(new Set([...Object.keys(newItem.stats), ...Object.keys(oldItem?.stats ?? {})])) as (keyof Stats)[];
     
+    // Check if player can equip this weapon type
     const canEquip = !newItem.weaponType || player.classInfo.allowedWeaponTypes.includes(newItem.weaponType);
+    
+    // Special Rule: Off Hand items require a 1H Weapon equipped in Main Hand
+    const isOffHand = newItem.slot === 'OffHand';
+    const hasOneHandedWeapon = player.equipment.MainHand && !player.equipment.MainHand.isTwoHanded;
+    const canEquipOffHand = !isOffHand || hasOneHandedWeapon;
 
     return (
         <div className="absolute inset-0 bg-slate-900/90 z-50 flex items-center justify-center animate-fadeIn p-4">
@@ -106,14 +123,25 @@ const LootDecision: React.FC<{
                 
                 <div className="bg-slate-900/80 border border-slate-700 rounded-lg p-2 mb-3">
                      <h4 className="text-xs font-bold text-slate-400 border-b border-slate-700 pb-1 mb-1.5">Comparison</h4>
-                     {allStats.length > 0 ? allStats.map(stat => (
-                        <StatComparison 
-                            key={stat}
-                            label={stat.toUpperCase()}
-                            oldValue={oldItem?.stats[stat] ?? 0}
-                            newValue={newItem.stats[stat] ?? 0}
-                        />
-                     )) : <p className="text-xs text-slate-500">No stat changes.</p>}
+                     {allStats.length > 0 ? allStats.map(stat => {
+                        if (stat === 'itemLevel' as any) return null; // Safe guard
+                        return (
+                            <StatComparison 
+                                key={stat}
+                                label={stat.toUpperCase()}
+                                oldValue={oldItem?.stats[stat] ?? 0}
+                                newValue={newItem.stats[stat] ?? 0}
+                            />
+                        );
+                     }) : <p className="text-xs text-slate-500">No stat changes.</p>}
+                     
+                     {/* Warning if equipping this will unequip something else */}
+                     {newItem.isTwoHanded && player.equipment.OffHand && (
+                         <p className="text-[10px] text-red-400 mt-2 font-bold italic text-center">Warning: Equipping this 2H weapon will remove your Off-Hand item.</p>
+                     )}
+                     {newItem.slot === 'OffHand' && player.equipment.MainHand?.isTwoHanded && (
+                         <p className="text-[10px] text-red-400 mt-2 font-bold italic text-center">Warning: Cannot equip. 2H Weapon in use.</p>
+                     )}
                 </div>
 
                 {!canEquip && (
@@ -122,11 +150,18 @@ const LootDecision: React.FC<{
                         <p className="text-[10px] text-red-400">Can only use: {player.classInfo.allowedWeaponTypes.join(', ')}</p>
                     </div>
                 )}
+                
+                {!canEquipOffHand && (
+                     <div className="mb-2 p-2 bg-red-900/50 border border-red-700 rounded text-center">
+                        <p className="text-xs text-red-300 font-bold">Restriction</p>
+                        <p className="text-[10px] text-red-400">Requires a One-Handed Weapon equipped.</p>
+                    </div>
+                )}
 
                 <div className="grid grid-cols-2 gap-2">
                     <button 
                         onClick={() => onLootDecision(true)}
-                        disabled={!canEquip}
+                        disabled={!canEquip || !canEquipOffHand}
                         className="w-full px-4 py-1.5 bg-green-600 text-white font-bold text-sm rounded-lg hover:bg-green-500 transition-colors disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed"
                     >Equip</button>
                     <button 
@@ -194,13 +229,18 @@ const CombatScreen: React.FC<CombatScreenProps> = ({ player, runState, logs, onA
               <h3 className="text-sm font-bold text-slate-200">{player.name}</h3>
             </div>
             <HealthBar current={runState.playerCurrentHpInRun} max={player.currentStats.maxHp} label="HP" />
+            
+            {/* Player Stats Grid */}
             <div className="grid grid-cols-4 gap-1 mt-1.5 pt-1.5 border-t border-slate-700">
-              <CombatStatDisplay label="STR" value={player.currentStats.str} />
-              <CombatStatDisplay label="DEX" value={player.currentStats.dex} />
-              <CombatStatDisplay label="INT" value={player.currentStats.int} />
+              <CombatStatDisplay label="STR" value={player.currentStats.str} color="text-red-400" />
+              <CombatStatDisplay label="DEX" value={player.currentStats.dex} color="text-green-400" />
+              <CombatStatDisplay label="INT" value={player.currentStats.int} color="text-blue-400" />
               <CombatStatDisplay label="DEF" value={player.currentStats.defense} />
+              
               <CombatStatDisplay label="CRIT" value={`${player.currentStats.critRate}%`} />
-              <CombatStatDisplay label="EVADE" value={`${player.currentStats.evasion}%`} />
+              <CombatStatDisplay label="EVA" value={`${player.currentStats.evasion}%`} />
+              <CombatStatDisplay label="BLOCK" value={`${player.currentStats.blockChance}%`} color="text-cyan-400" />
+              <CombatStatDisplay label="VAMP" value={`${player.currentStats.lifesteal}%`} color="text-pink-400" />
             </div>
           </div>
 
@@ -211,7 +251,6 @@ const CombatScreen: React.FC<CombatScreenProps> = ({ player, runState, logs, onA
                   <h3 className="text-sm font-bold text-slate-200">{runState.currentEnemy.name}</h3>
               </div>
               
-              {/* Enemy Stats Tooltip */}
               <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-32 invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-opacity duration-300 bg-slate-900 border border-[#D6721C] rounded-md shadow-lg p-1.5 text-xs z-30 pointer-events-none">
                   <p className="font-bold text-[#D6721C] mb-1 text-center text-xs">Stats</p>
                   <div className="space-y-0.5">
@@ -235,7 +274,7 @@ const CombatScreen: React.FC<CombatScreenProps> = ({ player, runState, logs, onA
           </div>
         </div>
 
-        {/* Combat Log - Flexible Height */}
+        {/* Combat Log */}
         <div className="bg-slate-800 border border-slate-700 rounded-xl p-2 shadow-lg flex-1 min-h-0 flex flex-col">
           <h3 className="text-xs font-bold text-slate-300 mb-1 border-b border-slate-700 pb-1 flex-shrink-0">Combat Log</h3>
           <div ref={logContainerRef} className="flex-grow overflow-y-auto pr-2 no-scrollbar">
@@ -247,7 +286,7 @@ const CombatScreen: React.FC<CombatScreenProps> = ({ player, runState, logs, onA
           </div>
         </div>
 
-        {/* Action Buttons - Fixed at Bottom */}
+        {/* Action Buttons */}
         <div className="grid grid-cols-3 gap-2 flex-shrink-0">
           <button
             onClick={handleAttackClick}

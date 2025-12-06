@@ -2,63 +2,72 @@
 
 import type { Enemy } from '../types';
 
-type EnemyData = Omit<Enemy, 'stats' | 'id'> & { id: string; stats: Omit<Enemy['stats'], 'hp'> };
+type EnemyData = Omit<Enemy, 'stats' | 'id' | 'level'> & { id: string; stats: Omit<Enemy['stats'], 'hp'> };
 
 export const BASE_ENEMIES: Record<string, EnemyData> = {
   SLIME: {
     id: 'SLIME',
     name: 'Slime', 
     icon: '💧', 
-    stats: { maxHp: 20, attack: 5, defense: 2, evasion: 0 }, 
+    minFloor: 1,
+    stats: { maxHp: 20, attack: 4, defense: 0, evasion: 0 }, 
     xpReward: 10 
-  },
-  GOBLIN: {
-    id: 'GOBLIN',
-    name: 'Goblin', 
-    icon: '👺', 
-    stats: { maxHp: 30, attack: 8, defense: 3, evasion: 5 }, 
-    xpReward: 15 
   },
   BAT: {
     id: 'BAT',
     name: 'Bat',
     icon: '🦇',
-    stats: { maxHp: 15, attack: 10, defense: 1, evasion: 15 },
+    minFloor: 1,
+    stats: { maxHp: 15, attack: 5, defense: 0, evasion: 15 },
     xpReward: 12
+  },
+  GOBLIN: {
+    id: 'GOBLIN',
+    name: 'Goblin', 
+    icon: '👺', 
+    minFloor: 2,
+    stats: { maxHp: 30, attack: 7, defense: 2, evasion: 5 }, 
+    xpReward: 15 
   },
   SKELETON: {
     id: 'SKELETON',
     name: 'Skeleton',
     icon: '💀',
-    stats: { maxHp: 40, attack: 12, defense: 5, evasion: 2 },
+    minFloor: 4,
+    stats: { maxHp: 45, attack: 9, defense: 6, evasion: 2 },
     xpReward: 20
   },
   SPIDER: {
     id: 'SPIDER',
     name: 'Giant Spider',
     icon: '🕷️',
-    stats: { maxHp: 35, attack: 15, defense: 2, evasion: 10 },
+    minFloor: 5,
+    stats: { maxHp: 35, attack: 11, defense: 2, evasion: 12 },
     xpReward: 25
   },
   ORC: {
     id: 'ORC',
     name: 'Orc',
     icon: '👹',
-    stats: { maxHp: 60, attack: 15, defense: 4, evasion: 2 },
+    minFloor: 7,
+    stats: { maxHp: 70, attack: 13, defense: 4, evasion: 0 },
     xpReward: 30
   },
   WRAITH: {
     id: 'WRAITH',
     name: 'Wraith',
     icon: '👻',
-    stats: { maxHp: 35, attack: 18, defense: 10, evasion: 20 },
+    minFloor: 9,
+    stats: { maxHp: 40, attack: 12, defense: 5, evasion: 15 },
     xpReward: 35
   },
+  // Bosses (minFloor logic handled by specific floor check in combat.ts, but good to have)
   GOBLIN_CHAMPION: {
     id: 'GOBLIN_CHAMPION',
     name: 'Goblin Champion', 
     icon: '👹', 
-    stats: { maxHp: 150, attack: 20, defense: 8, evasion: 8 }, 
+    minFloor: 10,
+    stats: { maxHp: 150, attack: 18, defense: 8, evasion: 5 }, 
     xpReward: 100 
   },
 };

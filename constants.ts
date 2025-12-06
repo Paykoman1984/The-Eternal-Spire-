@@ -1,32 +1,34 @@
 
+
 import type { PlayerClass, EquipmentSlot, GearSlot } from './types';
 
 export const CLASSES: PlayerClass[] = [
   {
     name: 'Warrior',
-    description: 'A master of martial combat, relying on strength and resilience to overcome foes.',
-    baseStats: { str: 10, dex: 5, int: 3, maxHp: 100, defense: 10, critRate: 5, evasion: 3 },
-    allowedWeaponTypes: ['Sword', 'Hammer'],
+    description: 'A fortress of steel. Relies on blocking and armor to outlast opponents.',
+    baseStats: { str: 10, dex: 3, int: 2, maxHp: 110, defense: 8, critRate: 5, evasion: 2, blockChance: 15, lifesteal: 0 },
+    allowedWeaponTypes: ['Sword', 'Hammer', 'Shield'],
     icon: '🛡️',
   },
   {
     name: 'Rogue',
-    description: 'A nimble shadow, striking from the darkness with deadly precision and cunning.',
-    baseStats: { str: 5, dex: 10, int: 5, maxHp: 80, defense: 5, critRate: 10, evasion: 10 },
-    allowedWeaponTypes: ['Dagger', 'Bow'],
+    description: 'A lethal shadow. Avoids damage and strikes critical blows.',
+    baseStats: { str: 4, dex: 10, int: 4, maxHp: 85, defense: 4, critRate: 15, evasion: 12, blockChance: 0, lifesteal: 3 },
+    allowedWeaponTypes: ['Dagger', 'Bow'], // Rogues can dual wield daggers (OffHand dagger uses Dagger type)
     icon: '🗡️',
   },
   {
     name: 'Mage',
-    description: 'A wielder of arcane energies, shaping reality with powerful spells and incantations.',
-    baseStats: { str: 3, dex: 5, int: 10, maxHp: 70, defense: 3, critRate: 7, evasion: 5 },
-    allowedWeaponTypes: ['Mace', 'Staff'],
+    description: 'A master of arcane arts. Sustains life by draining it from enemies.',
+    baseStats: { str: 2, dex: 3, int: 10, maxHp: 90, defense: 3, critRate: 5, evasion: 5, blockChance: 0, lifesteal: 12 },
+    allowedWeaponTypes: ['Mace', 'Staff', 'Tome'],
     icon: '🔮',
   },
 ];
 
 export const GEAR_SLOTS: GearSlot[] = [
-  'Weapon',
+  'MainHand',
+  'OffHand',
   'Helmet',
   'Armor',
   'Boots',
@@ -35,7 +37,8 @@ export const GEAR_SLOTS: GearSlot[] = [
 
 
 export const EQUIPMENT_SLOTS: EquipmentSlot[] = [
-  'Weapon',
+  'MainHand',
+  'OffHand',
   'Helmet',
   'Armor',
   'Boots',

@@ -1,3 +1,4 @@
+
 import type { Player, Stats } from '../types';
 import { GEAR_SLOTS } from '../constants';
 
@@ -38,6 +39,9 @@ export function recalculatePlayerStats(player: Player): Player {
         const item = updatedPlayer.equipment[slot];
         if (item) {
             for (const [stat, value] of Object.entries(item.stats)) {
+                // Safety check: Don't treat itemLevel as a stat if the data is malformed
+                if (stat === 'itemLevel') continue;
+
                 const key = stat as keyof Stats;
                 newStats[key] = (newStats[key] || 0) + value;
             }

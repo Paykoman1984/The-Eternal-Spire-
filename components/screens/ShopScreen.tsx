@@ -1,4 +1,5 @@
 
+
 import React from 'react';
 import type { Player, Equipment } from '../../types';
 import { RARITY_COLORS } from '../../data/items';
@@ -18,13 +19,14 @@ const MAX_REFRESHES = 3;
 const ShopScreen: React.FC<ShopScreenProps> = ({ player, onExit, onBuyPotion, onBuyShopItem, onRefresh }) => {
     const canBuyPotion = player.eternalShards >= POTION_COST && player.potionCount < 5;
     
-    const levelRequirementMet = player.level >= 5;
+    // Level 5 requirement removed as requested
     const canAffordRefresh = player.eternalShards >= REFRESH_COST;
     
     // New, more robust refresh logic
     const refreshesUsedThisLevel = (player.shopRefreshes && player.shopRefreshes.level === player.level) ? player.shopRefreshes.count : 0;
     const hasRefreshesLeft = refreshesUsedThisLevel < MAX_REFRESHES;
-    const canRefresh = levelRequirementMet && canAffordRefresh && hasRefreshesLeft;
+    
+    const canRefresh = canAffordRefresh && hasRefreshesLeft;
 
     let potionButtonContent: React.ReactNode;
     if (player.potionCount >= 5) {
@@ -82,12 +84,21 @@ const ShopScreen: React.FC<ShopScreenProps> = ({ player, onExit, onBuyPotion, on
                                 const rarityColor = RARITY_COLORS[item.rarity || 'Common'];
                                 const canEquip = !item.weaponType || player.classInfo.allowedWeaponTypes.includes(item.weaponType);
                                 
+                                // OffHand Restriction Check
+                                const isOffHand = item.slot === 'OffHand';
+                                const mainHand = player.equipment.MainHand;
+                                const hasOneHanded = mainHand && !mainHand.isTwoHanded;
+                                const canEquipOffHand = !isOffHand || hasOneHanded;
+                                
                                 return (
                                     <div key={index} className="bg-slate-900/70 border border-slate-700 rounded-lg p-1.5 flex items-center justify-between mb-1.5">
                                         <div className="flex items-center overflow-hidden">
                                             <span className="text-2xl mr-2">{item.icon}</span>
                                             <div className="flex-1 min-w-0">
-                                                <p className={`text-sm font-bold truncate ${rarityColor}`}>{item.name}</p>
+                                                <div className="flex items-baseline gap-2">
+                                                    <p className={`text-sm font-bold truncate ${rarityColor}`}>{item.name}</p>
+                                                    <span className="text-[9px] text-slate-400">iLvl {item.itemLevel}</span>
+                                                </div>
                                                 <p className="text-[9px] text-slate-500 mb-0.5">{item.slot} • {item.rarity || 'Common'}{item.weaponType ? ` (${item.weaponType})` : ''}</p>
                                                 <div className="flex flex-wrap gap-x-2 text-xs text-slate-400">
                                                     {Object.entries(item.stats).map(([stat, value]) => (
@@ -95,11 +106,12 @@ const ShopScreen: React.FC<ShopScreenProps> = ({ player, onExit, onBuyPotion, on
                                                     ))}
                                                 </div>
                                                 {!canEquip && <p className="text-[9px] text-red-400 mt-0.5">Cannot Equip</p>}
+                                                {!canEquipOffHand && <p className="text-[9px] text-red-400 mt-0.5">Requires 1H Weapon</p>}
                                             </div>
                                         </div>
                                         <button
                                             onClick={() => onBuyShopItem(item)}
-                                            disabled={player.eternalShards < (item.cost ?? 0) || !canEquip}
+                                            disabled={player.eternalShards < (item.cost ?? 0) || !canEquip || !canEquipOffHand}
                                             className="px-2.5 py-1 text-xs bg-green-600 text-white font-bold rounded-md shadow-md hover:bg-green-500 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-green-400 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed"
                                         >
                                             <div className="flex items-center justify-center">
@@ -130,15 +142,14 @@ const ShopScreen: React.FC<ShopScreenProps> = ({ player, onExit, onBuyPotion, on
                         disabled={!canRefresh}
                         className="w-full h-full px-4 py-2 bg-blue-700 text-white font-bold text-sm rounded shadow-lg hover:bg-blue-600 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                     >
-                        <span>🔄</span> Refresh
+                        <span>🔄</span> {canAffordRefresh ? 'Refresh' : 'Need Shards'}
                     </button>
                     {/* Refresh Tooltip */}
                     <div className="absolute bottom-full right-0 mb-2 w-48 invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-opacity duration-300 bg-slate-900 border border-blue-500 rounded-md shadow-xl p-2 text-xs z-50 text-center pointer-events-none">
                         <p className="font-bold text-blue-300 mb-1">Restock Items</p>
                         <p className="text-slate-300 mb-1">Cost: <span className={canAffordRefresh ? "text-purple-400 font-bold" : "text-red-400 font-bold"}>{REFRESH_COST}</span> Shards</p>
                         <p className="text-slate-400">Refreshes: <span className={hasRefreshesLeft ? "text-green-400" : "text-red-400"}>{MAX_REFRESHES - refreshesUsedThisLevel}/{MAX_REFRESHES}</span> left</p>
-                        {!levelRequirementMet && <p className="text-red-500 mt-1 italic">Unlocks at Level 5</p>}
-                        {levelRequirementMet && !hasRefreshesLeft && <p className="text-red-400 mt-1 italic">Limit for this level reached</p>}
+                        {!hasRefreshesLeft && <p className="text-red-400 mt-1 italic">Limit for this level reached</p>}
                     </div>
                 </div>
             </div>

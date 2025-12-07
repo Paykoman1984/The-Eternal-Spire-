@@ -1,5 +1,6 @@
 
 
+
 import React, { useState, useEffect } from 'react';
 import type { Player } from '../../types';
 
@@ -96,7 +97,7 @@ const ProfileSlot: React.FC<{
 const ProfileScreen: React.FC<ProfileScreenProps> = ({ profiles, onLoadProfile, onStartNewGame, onDeleteProfile }) => {
   
   return (
-    <div className="animate-fadeIn flex flex-col items-center justify-center min-h-screen p-4 w-full h-full">
+    <div className="animate-fadeIn flex flex-col items-center justify-center h-full p-4 w-full">
       <div className="w-full max-w-xl">
         <h2 className="text-lg md:text-xl font-bold text-center mb-2 text-[#D6721C]">
           Select Profile

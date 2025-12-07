@@ -1,3 +1,4 @@
+
 import React from 'react';
 import type { Player } from '../../types';
 
@@ -15,7 +16,7 @@ const StatRow: React.FC<{ label: string; value: string | number; color?: string 
 
 const StatsScreen: React.FC<StatsScreenProps> = ({ player, onExit }) => {
     return (
-        <div className="animate-fadeIn flex flex-col items-center justify-center min-h-screen p-4">
+        <div className="animate-fadeIn flex flex-col items-center justify-center h-full p-4">
             <div className="bg-slate-800 border border-slate-700 rounded-xl p-3 shadow-lg w-full max-w-md">
                 <div className="flex justify-between items-center border-b-2 border-slate-700 pb-1.5 mb-3">
                     <h2 className="text-lg font-bold text-[#D6721C]">Account Statistics</h2>

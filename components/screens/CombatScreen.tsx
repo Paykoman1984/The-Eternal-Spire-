@@ -1,5 +1,4 @@
 
-
 import React, { useRef, useEffect } from 'react';
 import type { Player, RunState, CombatLog, Equipment, Stats } from '../../types';
 import { RARITY_COLORS } from '../../data/items';
@@ -206,7 +205,7 @@ const CombatScreen: React.FC<CombatScreenProps> = ({ player, runState, logs, onA
   };
 
   return (
-    <div className="fixed inset-0 flex flex-col justify-center items-center p-4 z-10 animate-fadeIn">
+    <div className="fixed inset-0 flex flex-col justify-center items-center p-4 z-10 animate-fadeIn h-full overflow-hidden select-none">
       <div className="w-full max-w-3xl h-full flex flex-col gap-2 relative">
         {isLootPending && runState.pendingLoot && (
            <LootDecision 
@@ -295,7 +294,7 @@ const CombatScreen: React.FC<CombatScreenProps> = ({ player, runState, logs, onA
         </div>
 
         {/* Combat Log */}
-        <div className="bg-slate-800 border border-slate-700 rounded-xl p-2 shadow-lg flex-1 min-h-0 flex flex-col">
+        <div className="bg-slate-800 border border-slate-700 rounded-xl p-2 shadow-lg flex-1 min-h-0 flex flex-col md:max-h-[30vh] lg:max-h-[40vh]">
           <h3 className="text-xs font-bold text-slate-300 mb-1 border-b border-slate-700 pb-1 flex-shrink-0">Combat Log</h3>
           <div ref={logContainerRef} className="flex-grow overflow-y-auto pr-2 no-scrollbar">
             {logs.map((log) => (
@@ -307,7 +306,7 @@ const CombatScreen: React.FC<CombatScreenProps> = ({ player, runState, logs, onA
         </div>
 
         {/* Action Buttons */}
-        <div className="grid grid-cols-3 gap-2 flex-shrink-0">
+        <div className="grid grid-cols-3 gap-2 flex-shrink-0 mt-auto">
           <button
             onClick={handleAttackClick}
             disabled={playerDead || isPostCombatPhase}

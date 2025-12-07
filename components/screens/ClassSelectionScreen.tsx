@@ -1,5 +1,6 @@
 
 
+
 import React from 'react';
 import { CLASSES } from '../../constants';
 import type { PlayerClass, Stats } from '../../types';
@@ -50,7 +51,7 @@ const ClassCard: React.FC<{ playerClass: PlayerClass; onSelect: () => void }> = 
 
 const ClassSelectionScreen: React.FC<ClassSelectionScreenProps> = ({ onClassSelect }) => {
   return (
-    <div className="animate-fadeIn flex flex-col items-center justify-center min-h-screen p-4">
+    <div className="animate-fadeIn flex flex-col items-center justify-center h-full p-4">
       <div className="w-full max-w-md">
         <h2 className="text-base font-bold text-center mb-3 text-[#D6721C]">Choose Your Path</h2>
         <div className="grid grid-cols-2 gap-2">

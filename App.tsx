@@ -1,10 +1,4 @@
 
-
-
-
-
-
-
 import React, { useState, useCallback, useEffect } from 'react';
 import type { GameScreen, Player, PlayerClass, RunState, CombatLog, Equipment, GearSlot, Achievement } from './types';
 import { generateEnemy } from './utils/combat';
@@ -32,27 +26,62 @@ const COLOR_PARAM = "?color=%23e2e8f0";
 
 const App: React.FC = () => {
   const [gameScreen, setGameScreen] = useState<GameScreen>('start');
-  const [isLandscape, setIsLandscape] = useState(false);
+  const [isPortrait, setIsPortrait] = useState(true);
 
-  // Load profiles from localStorage once on initial component load using a lazy initializer with robust error handling.
+  // Portrait Mode Check
+  useEffect(() => {
+    const checkOrientation = () => {
+        let portrait = true;
+        try {
+            if (window.screen && window.screen.orientation && window.screen.orientation.type) {
+                portrait = window.screen.orientation.type.includes('portrait');
+            } else if (window.matchMedia) {
+                portrait = window.matchMedia("(orientation: portrait)").matches;
+            } else {
+                portrait = window.innerHeight >= window.innerWidth;
+            }
+        } catch (e) {
+            portrait = window.innerHeight >= window.innerWidth;
+        }
+        setIsPortrait(portrait);
+    };
+
+    checkOrientation();
+
+    const mediaQuery = window.matchMedia("(orientation: portrait)");
+    const handler = (e: MediaQueryListEvent) => setIsPortrait(e.matches);
+    
+    if (mediaQuery.addEventListener) {
+        mediaQuery.addEventListener("change", handler);
+    } else {
+        window.addEventListener('resize', checkOrientation);
+    }
+
+    return () => {
+        if (mediaQuery.removeEventListener) {
+            mediaQuery.removeEventListener("change", handler);
+        } else {
+            window.removeEventListener('resize', checkOrientation);
+        }
+    };
+  }, []);
+
+  // Load profiles from localStorage
   const [profiles, setProfiles] = useState<(Player | null)[]>(() => {
     try {
         const savedProfiles = localStorage.getItem(PROFILES_STORAGE_KEY);
         if (savedProfiles) {
             const parsedProfiles = JSON.parse(savedProfiles);
             if (Array.isArray(parsedProfiles) && (parsedProfiles.length === 2)) {
-                // Migration logic wrapped to prevent crash on malformed data
                 return parsedProfiles.map((p: any) => {
                     try {
                         if (p) {
                             const updatedProfile = { ...p };
                             
-                            // Safe name migration
                             if (!updatedProfile.name && updatedProfile.classInfo && updatedProfile.classInfo.name) {
                                 updatedProfile.name = updatedProfile.classInfo.name;
                             }
                             
-                            // Migrate from shopRefreshesUsed to the new shopRefreshes object
                             if (!updatedProfile.shopRefreshes) {
                                 updatedProfile.shopRefreshes = { level: updatedProfile.level || 1, count: 0 };
                             }
@@ -63,7 +92,6 @@ const App: React.FC = () => {
                                 delete updatedProfile.shopRefreshesUsed;
                             }
 
-                            // Stats Migration for Block/Lifesteal
                             if (!updatedProfile.baseStats) updatedProfile.baseStats = {};
                             if (!updatedProfile.currentStats) updatedProfile.currentStats = {};
                             
@@ -72,17 +100,14 @@ const App: React.FC = () => {
                             if (updatedProfile.currentStats.blockChance === undefined) updatedProfile.currentStats.blockChance = 0;
                             if (updatedProfile.currentStats.lifesteal === undefined) updatedProfile.currentStats.lifesteal = 0;
 
-                            // WEAPON SLOT MIGRATION: Weapon -> MainHand
                             if (updatedProfile.equipment && updatedProfile.equipment.Weapon) {
                                 const oldWeapon = updatedProfile.equipment.Weapon;
-                                // Determine if 2H based on templates or type
                                 let isTwoHanded = false;
                                 if (oldWeapon.weaponType && ['Bow', 'Staff', 'Hammer'].includes(oldWeapon.weaponType)) {
                                      if (oldWeapon.name && (oldWeapon.name.includes("Great") || oldWeapon.name.includes("Maul") || oldWeapon.name.includes("Bow") || oldWeapon.name.includes("Staff"))) {
                                          isTwoHanded = true;
                                      }
                                 }
-                                
                                 updatedProfile.equipment.MainHand = {
                                     ...oldWeapon,
                                     slot: 'MainHand',
@@ -91,7 +116,6 @@ const App: React.FC = () => {
                                 delete updatedProfile.equipment.Weapon;
                             }
 
-                            // Item Level Migration
                             if (updatedProfile.equipment) {
                                 GEAR_SLOTS.forEach(slot => {
                                     if (updatedProfile.equipment[slot] && updatedProfile.equipment[slot].itemLevel === undefined) {
@@ -100,20 +124,14 @@ const App: React.FC = () => {
                                 });
                             }
                             
-                            // FIX BROKEN ICONS - COMPREHENSIVE OVERHAUL
                             const fixIcon = (item: Equipment) => {
-                                // Specific Fixes based on User Reports
-                                if (item.name && item.name.includes('Leather Vest')) item.icon = `${ICON_BASE}/sleeveless-jacket.svg${COLOR_PARAM}`;
-                                if (item.name && item.name.includes('Tower Shield')) item.icon = `${ICON_BASE}/shield.svg${COLOR_PARAM}`;
-                                if (item.name && item.name.includes('Longbow')) item.icon = `${ICON_BASE}/bow-arrow.svg${COLOR_PARAM}`;
-                                if (item.name && item.name.includes('Iron Shield')) item.icon = `${ICON_BASE}/shield.svg${COLOR_PARAM}`;
-
-                                // General Pattern Matching to Replace Potentially Broken Icons
+                                // 1. URL-based generic fixes (for items with broken filenames)
                                 if (item.icon) {
-                                    // Weapons
-                                    if (item.icon.includes('scepter') || item.icon.includes('morning-star')) item.icon = `${ICON_BASE}/flanged-mace.svg${COLOR_PARAM}`;
-                                    if (item.icon.includes('bastard-sword') || item.icon.includes('great-sword') || item.icon.includes('falchion') || item.icon.includes('gladius')) item.icon = `${ICON_BASE}/broadsword.svg${COLOR_PARAM}`; // Simplify to broadsword if confused, but we kept two-handed-sword in template
-                                    if (item.icon.includes('two-handed-sword')) item.icon = `${ICON_BASE}/two-handed-sword.svg${COLOR_PARAM}`; // Ensure 2H sword uses valid icon
+                                    if (item.icon.includes('scepter')) item.icon = `${ICON_BASE}/sceptre.svg${COLOR_PARAM}`; // Fix US/UK spelling
+                                    if (item.icon.includes('morning-star')) item.icon = `${ICON_BASE}/flanged-mace.svg${COLOR_PARAM}`;
+                                    
+                                    if (item.icon.includes('bastard-sword') || item.icon.includes('great-sword') || item.icon.includes('falchion') || item.icon.includes('gladius')) item.icon = `${ICON_BASE}/broadsword.svg${COLOR_PARAM}`;
+                                    if (item.icon.includes('two-handed-sword')) item.icon = `${ICON_BASE}/two-handed-sword.svg${COLOR_PARAM}`;
                                     if (item.icon.includes('dagger') || item.icon.includes('bowie-knife') || item.icon.includes('kris') || item.icon.includes('stiletto') || item.icon.includes('sacrificial-dagger')) item.icon = `${ICON_BASE}/plain-dagger.svg${COLOR_PARAM}`;
                                     if (item.icon.includes('thor-hammer')) item.icon = `${ICON_BASE}/warhammer.svg${COLOR_PARAM}`;
                                     if (item.icon.includes('bow-string') || item.icon.includes('high-shot') || item.icon.includes('composite-bow')) item.icon = `${ICON_BASE}/bow-arrow.svg${COLOR_PARAM}`;
@@ -121,12 +139,10 @@ const App: React.FC = () => {
                                     if (item.icon.includes('crystal-wand') || item.icon.includes('crescent-staff')) item.icon = `${ICON_BASE}/wizard-staff.svg${COLOR_PARAM}`;
                                     if (item.icon.includes('orb-wand')) item.icon = `${ICON_BASE}/crystal-ball.svg${COLOR_PARAM}`;
                                     
-                                    // Armor / Offhand
                                     if (item.icon.includes('tower-shield') || item.icon.includes('checked-shield')) item.icon = `${ICON_BASE}/shield.svg${COLOR_PARAM}`;
                                     if (item.icon.includes('attached-shield')) item.icon = `${ICON_BASE}/round-shield.svg${COLOR_PARAM}`;
                                     if (item.icon.includes('book-cover')) item.icon = `${ICON_BASE}/spell-book.svg${COLOR_PARAM}`;
                                     
-                                    // Apparel
                                     if (item.icon.includes('closed-barbute') || item.icon.includes('crested-helmet') || item.icon.includes('circlet')) item.icon = `${ICON_BASE}/visored-helm.svg${COLOR_PARAM}`;
                                     if (item.icon.includes('wizard-hat')) item.icon = `${ICON_BASE}/pointy-hat.svg${COLOR_PARAM}`;
                                     if (item.icon.includes('cultist')) item.icon = `${ICON_BASE}/hood.svg${COLOR_PARAM}`;
@@ -135,7 +151,6 @@ const App: React.FC = () => {
                                     if (item.icon.includes('tunic') || item.icon.includes('leather-vest')) item.icon = `${ICON_BASE}/sleeveless-jacket.svg${COLOR_PARAM}`;
                                     if (item.icon.includes('cloak')) item.icon = `${ICON_BASE}/robe.svg${COLOR_PARAM}`;
                                     
-                                    // Boots/Gloves
                                     if (item.icon.includes('magic-boots') || item.icon.includes('sandals')) item.icon = `${ICON_BASE}/boots.svg${COLOR_PARAM}`;
                                     if (item.icon.includes('walking-boot') || item.icon.includes('light-shoes')) item.icon = `${ICON_BASE}/leather-boot.svg${COLOR_PARAM}`;
                                     if (item.icon.includes('armored-boot') || item.icon.includes('greaves')) item.icon = `${ICON_BASE}/metal-boot.svg${COLOR_PARAM}`;
@@ -144,6 +159,17 @@ const App: React.FC = () => {
                                     if (item.icon.includes('metal-hand') || item.icon.includes('iron-gauntlets')) item.icon = `${ICON_BASE}/mailed-fist.svg${COLOR_PARAM}`;
                                     if (item.icon.includes('mystic-wraps') || item.icon.includes('cloth-wraps')) item.icon = `${ICON_BASE}/hand-bandage.svg${COLOR_PARAM}`;
                                 }
+
+                                // 2. Name-based Specific Overrides (Stronger than generic URL checks)
+                                if (item.name) {
+                                    if (item.name.includes('Leather Vest')) item.icon = `${ICON_BASE}/sleeveless-jacket.svg${COLOR_PARAM}`;
+                                    if (item.name.includes('Tower Shield')) item.icon = `${ICON_BASE}/shield.svg${COLOR_PARAM}`;
+                                    if (item.name.includes('Longbow')) item.icon = `${ICON_BASE}/bow-arrow.svg${COLOR_PARAM}`;
+                                    if (item.name.includes('Iron Shield')) item.icon = `${ICON_BASE}/shield.svg${COLOR_PARAM}`;
+                                    if (item.name.includes('Scepter')) item.icon = `${ICON_BASE}/sceptre.svg${COLOR_PARAM}`;
+                                    if (item.name.includes('Greatsword') || item.name.includes('Zweihander')) item.icon = `${ICON_BASE}/two-handed-sword.svg${COLOR_PARAM}`;
+                                }
+
                                 return item;
                             };
 
@@ -167,9 +193,6 @@ const App: React.FC = () => {
                             return updatedProfile;
                         }
                     } catch (migrationError) {
-                        console.error("Error migrating profile:", migrationError);
-                        // Return profile as-is if migration fails, or null if critically broken. 
-                        // Returning p prevents data loss, though might be unstable.
                         return p;
                     }
                     return p;
@@ -179,15 +202,14 @@ const App: React.FC = () => {
     } catch (error) {
         console.error("Failed to load profiles:", error);
     }
-    return [null, null]; // Default if nothing is saved or data is invalid
+    return [null, null];
   });
 
   const [activeProfileIndex, setActiveProfileIndex] = useState<number | null>(null);
-  const [newGameName, setNewGameName] = useState<string>(''); // Temp state for name creation
+  const [newGameName, setNewGameName] = useState<string>('');
   const [runState, setRunState] = useState<RunState | null>(null);
   const [combatLogs, setCombatLogs] = useState<CombatLog[]>([]);
 
-  // Effect to automatically save profiles to localStorage whenever they change.
   useEffect(() => {
       try {
           localStorage.setItem(PROFILES_STORAGE_KEY, JSON.stringify(profiles));
@@ -195,44 +217,6 @@ const App: React.FC = () => {
           console.error("Failed to save profiles:", error);
       }
   }, [profiles]);
-
-  // Effect to listen for orientation changes using SAFE checks
-  useEffect(() => {
-    const handleOrientationChange = () => {
-      try {
-          if (typeof screen !== 'undefined' && screen.orientation && screen.orientation.type) {
-            setIsLandscape(screen.orientation.type.includes('landscape'));
-          } else if (typeof window !== 'undefined') {
-             // Fallback for devices without screen.orientation API
-             const mql = window.matchMedia("(orientation: landscape)");
-             setIsLandscape(mql.matches);
-          }
-      } catch (e) {
-          console.warn("Orientation check failed", e);
-      }
-    };
-
-    try {
-        if (typeof screen !== 'undefined' && screen.orientation) {
-            handleOrientationChange(); 
-            screen.orientation.addEventListener('change', handleOrientationChange);
-            return () => {
-                screen.orientation.removeEventListener('change', handleOrientationChange);
-            };
-        } else {
-            const mediaQuery = window.matchMedia("(orientation: landscape)");
-            const handleMediaQueryChange = (e: MediaQueryListEvent) => setIsLandscape(e.matches);
-            
-            setIsLandscape(mediaQuery.matches); 
-            mediaQuery.addEventListener('change', handleMediaQueryChange);
-            return () => {
-                mediaQuery.removeEventListener('change', handleMediaQueryChange);
-            };
-        }
-    } catch (e) {
-        console.warn("Failed to setup orientation listener", e);
-    }
-  }, []);
 
 
   const updateCurrentPlayer = useCallback((updater: (player: Player) => Player) => {
@@ -265,7 +249,7 @@ const App: React.FC = () => {
   
   const handleStartNewGameInSlot = useCallback((index: number) => {
     setActiveProfileIndex(index);
-    setNewGameName(''); // Reset name
+    setNewGameName('');
     setGameScreen('name_selection');
   }, []);
 
@@ -376,7 +360,6 @@ const App: React.FC = () => {
 
   const updateAchievementProgress = useCallback((playerState: Player, runState: RunState, type: 'slay' | 'reach_floor', value: string | number): Player => {
       const newPlayer = { ...playerState };
-      
       ACHIEVEMENTS.forEach(ach => {
           if (ach.type === 'slay' && type === 'slay' && ach.targetId === value) {
               const currentProgress = newPlayer.achievementProgress[ach.id] || 0;
@@ -389,7 +372,6 @@ const App: React.FC = () => {
               }
           }
       });
-
       return newPlayer;
   }, []);
 
@@ -397,7 +379,6 @@ const App: React.FC = () => {
     const activePlayer = activeProfileIndex !== null ? profiles[activeProfileIndex] : null;
     if (!activePlayer) return;
 
-    // Pass player level to generator for better scaling/elite chance
     const initialEnemy = generateEnemy(1, activePlayer.level);
     setRunState({
       floor: 1,
@@ -478,12 +459,9 @@ const App: React.FC = () => {
       logs.push({ message: `You have defeated the ${newRunState.currentEnemy.name}!`, color: 'text-[#D6721C]' });
       newRunState.enemiesKilled += 1;
       
-      // Elite bonus logic handled in loot gen or XP calculation
       let xpGained = newRunState.currentEnemy.xpReward;
-      
       const loot = generateLoot(newRunState.floor, activePlayer.level);
       
-      // Double shard chance for Elites
       if (newRunState.currentEnemy.isElite && Math.random() < 0.5) {
           loot.shards += Math.floor(Math.random() * 10) + 5;
       }
@@ -495,7 +473,6 @@ const App: React.FC = () => {
       }
 
       let nextPlayer = { ...activePlayer };
-
       nextPlayer.totalEnemiesKilled = (nextPlayer.totalEnemiesKilled || 0) + 1;
       nextPlayer = updateAchievementProgress(nextPlayer, newRunState, 'slay', newRunState.currentEnemy.id);
 
@@ -521,7 +498,6 @@ const App: React.FC = () => {
           newRunState.runXp -= newRunState.runXpToNextLevel;
           newRunState.runLevel += 1;
           newRunState.runXpToNextLevel = Math.floor(newRunState.runXpToNextLevel * 1.8);
-          
           newRunState.playerCurrentHpInRun = nextPlayer.currentStats.maxHp; 
           logs.push({ message: `You leveled up to Run Level ${newRunState.runLevel}! HP Restored!`, color: 'text-[#D6721C]' });
       }
@@ -585,7 +561,6 @@ const App: React.FC = () => {
     if (playerDefeated) {
       setTimeout(() => setGameScreen('run_summary'), 2000);
     }
-  
   }, [activeProfileIndex, profiles, runState, advanceToNextFloor, updateAchievementProgress, updateCurrentPlayer, handleAccountLevelUp]);
 
   const handleLootDecision = useCallback((equip: boolean) => {
@@ -595,7 +570,6 @@ const App: React.FC = () => {
 
     const lootItem = runState.pendingLoot;
     if (equip) {
-        // Validation: Cannot equip OffHand if using 2H or no MainHand
         if (lootItem.slot === 'OffHand') {
             const mainHand = activePlayer.equipment.MainHand;
             if (!mainHand || mainHand.isTwoHanded) {
@@ -609,11 +583,10 @@ const App: React.FC = () => {
             let updatedPlayer = { ...player };
             const slot = lootItem.slot;
             
-            // LOGIC FOR 2H and DUAL WIELD
             if (slot === 'MainHand') {
                 updatedPlayer.equipment.MainHand = lootItem;
                 if (lootItem.isTwoHanded) {
-                    delete updatedPlayer.equipment.OffHand; // Unequip offhand if 2H equipped
+                    delete updatedPlayer.equipment.OffHand;
                 }
             } else if (slot === 'OffHand') {
                 updatedPlayer.equipment.OffHand = lootItem;
@@ -650,50 +623,11 @@ const App: React.FC = () => {
     updateCurrentPlayer(player => ({ ...player, potionCount: player.potionCount - 1 }));
 
     const healAmount = POTION_HEAL_AMOUNT;
-    
-    const oldHp = newRunState.playerCurrentHpInRun;
     newRunState.playerCurrentHpInRun = Math.min(activePlayer.currentStats.maxHp, newRunState.playerCurrentHpInRun + healAmount);
-    const actualHeal = newRunState.playerCurrentHpInRun - oldHp;
-    logs.push({ message: `You used a Health Potion and restored ${actualHeal} HP.`, color: 'text-slate-200' });
-
-    if (newRunState.currentEnemy.stats.hp > 0) {
-      if (Math.random() * 100 < activePlayer.currentStats.evasion) {
-          logs.push({ message: `You dodged the ${newRunState.currentEnemy.name}'s attack!`, color: 'text-red-400' });
-      } else {
-           let blocked = false;
-           if (Math.random() * 100 < activePlayer.currentStats.blockChance) {
-               blocked = true;
-           }
-
-          let enemyDamage = Math.max(1, newRunState.currentEnemy.stats.attack - activePlayer.currentStats.defense);
-          
-          if (blocked) {
-              enemyDamage = Math.max(1, Math.floor(enemyDamage * 0.5));
-          }
-
-          enemyDamage = Math.floor(enemyDamage);
-          newRunState.playerCurrentHpInRun = Math.max(0, newRunState.playerCurrentHpInRun - enemyDamage);
-          
-          if (blocked) {
-             logs.push({ message: `You BLOCKED! Took reduced damage (${enemyDamage}).`, color: 'text-cyan-400' });
-          } else {
-             logs.push({ message: `${newRunState.currentEnemy.name} hits you for ${enemyDamage} damage.`, color: 'text-slate-200' });
-          }
-      }
-    
-      if (newRunState.playerCurrentHpInRun <= 0) {
-        playerDefeated = true;
-        updateCurrentPlayer(player => ({ ...player, totalDeaths: (player.totalDeaths || 0) + 1 }));
-        logs.push({ message: `You have been defeated...`, color: 'text-[#D6721C]' });
-      }
-    }
+    logs.push({ message: `You used a Health Potion and restored ${healAmount} HP.`, color: 'text-slate-200' });
 
     setCombatLogs(prev => [...prev, ...logs.map(log => ({...log, id: Date.now() + Math.random() * logs.indexOf(log)}))]);
     setRunState(newRunState);
-
-    if (playerDefeated) {
-      setTimeout(() => setGameScreen('run_summary'), 2000);
-    }
   }, [activeProfileIndex, profiles, runState, updateCurrentPlayer]);
   
   const handleFlee = useCallback(() => {
@@ -749,21 +683,15 @@ const App: React.FC = () => {
   const handleBuyShopItem = useCallback((itemToBuy: Equipment) => {
     updateCurrentPlayer(player => {
       if (!itemToBuy.cost || player.eternalShards < itemToBuy.cost) return player;
-      
       const slot = itemToBuy.slot;
-      
-      // Validation: Cannot buy OffHand if using 2H or no MainHand
       if (slot === 'OffHand') {
           const mainHand = player.equipment.MainHand;
-          if (!mainHand || mainHand.isTwoHanded) {
-              return player; // Prevent buy
-          }
+          if (!mainHand || mainHand.isTwoHanded) return player;
       }
 
       let updatedPlayer = { ...player };
       updatedPlayer.eternalShards -= itemToBuy.cost;
       
-      // LOGIC FOR 2H and DUAL WIELD in SHOP
       if (slot === 'MainHand') {
             updatedPlayer.equipment.MainHand = { ...itemToBuy };
             if (itemToBuy.isTwoHanded) {
@@ -780,7 +708,6 @@ const App: React.FC = () => {
       const hpBefore = updatedPlayer.currentHp;
       const maxHpBefore = updatedPlayer.currentStats.maxHp;
       updatedPlayer = recalculatePlayerStats(updatedPlayer);
-      
       const maxHpAfter = updatedPlayer.currentStats.maxHp;
       if (maxHpAfter !== maxHpBefore && maxHpBefore > 0) {
           const hpPercentage = hpBefore / maxHpBefore;
@@ -796,11 +723,7 @@ const App: React.FC = () => {
   const handleRefreshShop = useCallback(() => {
     updateCurrentPlayer(player => {
         const currentLevelRefreshes = (player.shopRefreshes && player.shopRefreshes.level === player.level) ? player.shopRefreshes.count : 0;
-        
-        if (player.eternalShards < 1000 || currentLevelRefreshes >= 3) {
-            return player;
-        }
-        
+        if (player.eternalShards < 1000 || currentLevelRefreshes >= 3) return player;
         return {
             ...player,
             eternalShards: player.eternalShards - 1000,
@@ -826,105 +749,39 @@ const App: React.FC = () => {
     });
   }, [updateCurrentPlayer]);
 
-  if (isLandscape) {
-    return (
-       <div className="min-h-screen bg-slate-900/85 text-slate-200 flex flex-col items-center justify-center p-8 text-center font-serif">
-         <div className="text-4xl mb-4">📱</div>
-         <h2 className="text-xl font-bold text-[#D6721C] mb-2">Portrait Mode Required</h2>
-         <p className="text-sm text-slate-400">Please rotate your device to vertical orientation to play The Eternal Spire.</p>
-       </div>
-    );
+  if (!isPortrait) {
+      return (
+          <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-8 text-center animate-fadeIn text-slate-200 font-serif">
+               <div className="w-16 h-16 mb-4 text-[#D6721C] animate-pulse">
+                  <svg fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M17 1.01L7 1c-1.1 0-2 .9-2 2v18c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V3c0-1.1-.9-1.99-2-1.99zM17 19H7V5h10v14z"/>
+                  </svg>
+              </div>
+              <h1 className="text-2xl font-bold text-[#D6721C] mb-2">Portrait Mode Required</h1>
+              <p className="text-slate-400">Please rotate your device to play The Eternal Spire.</p>
+          </div>
+      );
   }
 
   const renderScreen = () => {
     const activePlayer = activeProfileIndex !== null ? profiles[activeProfileIndex] : null;
-
     switch (gameScreen) {
-      case 'start':
-        return <StartScreen onStart={handleStartGame} />;
-      case 'profile_selection':
-        return <ProfileScreen 
-          profiles={profiles}
-          onLoadProfile={handleLoadProfile}
-          onStartNewGame={handleStartNewGameInSlot}
-          onDeleteProfile={handleDeleteProfile}
-        />;
-      case 'name_selection':
-        return <NameSelectionScreen
-            onNameConfirm={handleNameConfirm}
-            onCancel={handleCancelNameSelection}
-        />;
-      case 'class_selection':
-        return <ClassSelectionScreen onClassSelect={handleClassSelect} />;
-      case 'main_game':
-        if (activePlayer) {
-          return <MainGameScreen 
-            player={activePlayer} 
-            onExitToProfiles={handleExitToProfiles} 
-            onEnterSpire={handleEnterSpire}
-            onEnterShop={handleEnterShop}
-            onEnterAchievements={handleEnterAchievements}
-            onEnterStats={handleEnterStats}
-          />;
-        }
-        break;
-      case 'combat':
-        if (activePlayer && runState) {
-          return <CombatScreen 
-            player={activePlayer} 
-            runState={runState} 
-            logs={combatLogs} 
-            onAttack={handleAttack} 
-            onFlee={handleFlee} 
-            onLootDecision={handleLootDecision}
-            onUsePotion={handleUsePotion}
-          />;
-        }
-        break;
-      case 'shop':
-        if (activePlayer) {
-          return <ShopScreen
-            player={activePlayer}
-            onExit={handleExitSubScreen}
-            onBuyPotion={handleBuyPotion}
-            onBuyShopItem={handleBuyShopItem}
-            onRefresh={handleRefreshShop}
-          />;
-        }
-        break;
-      case 'achievements':
-        if (activePlayer) {
-          return <AchievementsScreen
-            player={activePlayer}
-            achievements={ACHIEVEMENTS}
-            onExit={handleExitSubScreen}
-            onClaim={handleClaimAchievement}
-          />;
-        }
-        break;
-      case 'stats':
-          if (activePlayer) {
-              return <StatsScreen
-                player={activePlayer}
-                onExit={handleExitSubScreen}
-              />;
-          }
-          break;
-      case 'run_summary':
-        if (runState) {
-          return <RunSummaryScreen
-            runState={runState}
-            onClose={handleCloseSummary}
-          />;
-        }
-        break;
+      case 'start': return <StartScreen onStart={handleStartGame} />;
+      case 'profile_selection': return <ProfileScreen profiles={profiles} onLoadProfile={handleLoadProfile} onStartNewGame={handleStartNewGameInSlot} onDeleteProfile={handleDeleteProfile} />;
+      case 'name_selection': return <NameSelectionScreen onNameConfirm={handleNameConfirm} onCancel={handleCancelNameSelection} />;
+      case 'class_selection': return <ClassSelectionScreen onClassSelect={handleClassSelect} />;
+      case 'main_game': if (activePlayer) return <MainGameScreen player={activePlayer} onExitToProfiles={handleExitToProfiles} onEnterSpire={handleEnterSpire} onEnterShop={handleEnterShop} onEnterAchievements={handleEnterAchievements} onEnterStats={handleEnterStats} />; break;
+      case 'combat': if (activePlayer && runState) return <CombatScreen player={activePlayer} runState={runState} logs={combatLogs} onAttack={handleAttack} onFlee={handleFlee} onLootDecision={handleLootDecision} onUsePotion={handleUsePotion} />; break;
+      case 'shop': if (activePlayer) return <ShopScreen player={activePlayer} onExit={handleExitSubScreen} onBuyPotion={handleBuyPotion} onBuyShopItem={handleBuyShopItem} onRefresh={handleRefreshShop} />; break;
+      case 'achievements': if (activePlayer) return <AchievementsScreen player={activePlayer} achievements={ACHIEVEMENTS} onExit={handleExitSubScreen} onClaim={handleClaimAchievement} />; break;
+      case 'stats': if (activePlayer) return <StatsScreen player={activePlayer} onExit={handleExitSubScreen} />; break;
+      case 'run_summary': if (runState) return <RunSummaryScreen runState={runState} onClose={handleCloseSummary} />; break;
     }
-    setGameScreen('start');
     return <StartScreen onStart={handleStartGame} />;
   };
 
   return (
-    <div className="min-h-screen bg-black/50 text-slate-200 font-serif flex flex-col">
+    <div className="h-screen overflow-hidden bg-black/50 text-slate-200 font-serif flex flex-col">
         {renderScreen()}
     </div>
   );

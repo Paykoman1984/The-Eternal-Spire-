@@ -1,4 +1,6 @@
 
+
+
 import React from 'react';
 import type { RunState } from '../../types';
 
@@ -16,7 +18,7 @@ const StatRow: React.FC<{ label: string; value: string | number; color?: string 
 
 const RunSummaryScreen: React.FC<RunSummaryScreenProps> = ({ runState, onClose }) => {
   return (
-    <div className="animate-fadeIn flex flex-col items-center justify-center min-h-screen p-4">
+    <div className="animate-fadeIn flex flex-col items-center justify-center h-full p-4">
         <div className="bg-slate-800 border-2 border-slate-600 rounded-xl p-3 shadow-2xl w-full max-w-xs mx-auto text-center">
             <h2 className="text-lg font-bold text-[#D6721C] mb-0.5">Run Complete</h2>
             <p className="text-slate-400 text-xs mb-3">Your ascent has ended... for now.</p>

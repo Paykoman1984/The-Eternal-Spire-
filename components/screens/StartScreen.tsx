@@ -1,3 +1,4 @@
+
 import React from 'react';
 
 interface StartScreenProps {
@@ -6,7 +7,7 @@ interface StartScreenProps {
 
 const StartScreen: React.FC<StartScreenProps> = ({ onStart }) => {
   return (
-    <div className="flex flex-col items-center justify-center text-center min-h-screen p-4 animate-fadeIn">
+    <div className="flex flex-col items-center justify-center text-center h-full p-4 animate-fadeIn">
       <h1 className="text-5xl md:text-6xl font-bold text-[#D6721C] mb-2 tracking-wider" style={{ textShadow: '4px 4px 8px rgba(0,0,0,0.9), 0 0 10px #D6721C, 0 0 20px #D6721C' }}>
         The Eternal Spire
       </h1>

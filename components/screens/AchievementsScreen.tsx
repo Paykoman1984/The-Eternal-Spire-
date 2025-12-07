@@ -1,3 +1,4 @@
+
 import React from 'react';
 import type { Player, Achievement } from '../../types';
 
@@ -86,7 +87,7 @@ const AchievementsScreen: React.FC<AchievementsScreenProps> = ({ player, achieve
     const questAchievements = achievements.filter(a => !a.isBuff);
 
     return (
-        <div className="animate-fadeIn flex flex-col items-center justify-center min-h-screen p-4">
+        <div className="animate-fadeIn flex flex-col items-center justify-center h-full p-4">
             <div className="bg-slate-800 border border-slate-700 rounded-xl p-3 shadow-lg w-full max-w-2xl flex flex-col max-h-[90vh]">
                 <div className="flex justify-between items-center border-b-2 border-slate-700 pb-1.5 mb-2">
                     <h2 className="text-lg font-bold text-[#D6721C]">Achievements</h2>

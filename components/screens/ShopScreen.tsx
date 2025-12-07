@@ -1,4 +1,6 @@
 
+
+
 import React from 'react';
 import type { Player, Equipment } from '../../types';
 import { RARITY_COLORS } from '../../data/items';
@@ -44,7 +46,7 @@ const ShopScreen: React.FC<ShopScreenProps> = ({ player, onExit, onBuyPotion, on
 
 
     return (
-        <div className="animate-fadeIn flex flex-col items-center justify-center min-h-screen p-4 w-full h-full">
+        <div className="animate-fadeIn flex flex-col items-center justify-center h-full p-4 w-full">
             {/* Header Section - Outside the main box */}
             <div className="w-full max-w-lg flex flex-col items-center mb-2 px-1 relative">
                 <h2 className="text-xl font-bold text-[#D6721C] drop-shadow-md mb-1">Shop</h2>

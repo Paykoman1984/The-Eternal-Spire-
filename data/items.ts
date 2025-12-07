@@ -1,5 +1,6 @@
 
 
+
 import type { Equipment, Stats, GearSlot, Rarity, WeaponType } from '../types';
 
 type ItemTemplate = Omit<Equipment, 'name' | 'stats' | 'rarity' | 'itemLevel'> & {
@@ -119,6 +120,29 @@ export const ITEM_TEMPLATES: Record<GearSlot, ItemTemplate[]> = {
         { name: 'Cloth Wraps', slot: 'Gloves', icon: `${ICON_BASE}/hand-bandage.svg${COLOR_PARAM}`, possibleStats: ['int', 'lifesteal', 'evasion'] },
         { name: 'Spellbinders', slot: 'Gloves', icon: `${ICON_BASE}/gloves.svg${COLOR_PARAM}`, possibleStats: ['int', 'maxHp', 'lifesteal'] },
         { name: 'Mystic Wraps', slot: 'Gloves', icon: `${ICON_BASE}/hand-bandage.svg${COLOR_PARAM}`, possibleStats: ['int', 'maxHp', 'evasion'] },
+    ],
+    Necklace: [
+        { name: 'Amulet', slot: 'Necklace', icon: `${ICON_BASE}/necklace.svg${COLOR_PARAM}`, possibleStats: ['maxHp', 'lifesteal', 'int'] },
+        { name: 'Pendant', slot: 'Necklace', icon: `${ICON_BASE}/gem-necklace.svg${COLOR_PARAM}`, possibleStats: ['critRate', 'str', 'dex'] },
+        { name: 'Choker', slot: 'Necklace', icon: `${ICON_BASE}/pearl-necklace.svg${COLOR_PARAM}`, possibleStats: ['evasion', 'lifesteal', 'int'] },
+        { name: 'Chain', slot: 'Necklace', icon: `${ICON_BASE}/necklace.svg${COLOR_PARAM}`, possibleStats: ['defense', 'blockChance', 'str'] },
+    ],
+    Ring: [
+        { name: 'Iron Band', slot: 'Ring', icon: `${ICON_BASE}/ring.svg${COLOR_PARAM}`, possibleStats: ['defense', 'str', 'blockChance'] },
+        { name: 'Gold Ring', slot: 'Ring', icon: `${ICON_BASE}/ring.svg${COLOR_PARAM}`, possibleStats: ['critRate', 'int', 'lifesteal'] },
+        { name: 'Signet Ring', slot: 'Ring', icon: `${ICON_BASE}/ring.svg${COLOR_PARAM}`, possibleStats: ['maxHp', 'dex', 'str'] },
+        { name: 'Ruby Ring', slot: 'Ring', icon: `${ICON_BASE}/ring.svg${COLOR_PARAM}`, possibleStats: ['str', 'critRate', 'maxHp'] },
+    ],
+    Earring: [
+        { name: 'Stud', slot: 'Earring', icon: `${ICON_BASE}/earrings.svg${COLOR_PARAM}`, possibleStats: ['evasion', 'dex', 'critRate'] },
+        { name: 'Hoop', slot: 'Earring', icon: `${ICON_BASE}/earrings.svg${COLOR_PARAM}`, possibleStats: ['lifesteal', 'int', 'maxHp'] },
+        { name: 'Charm', slot: 'Earring', icon: `${ICON_BASE}/earrings.svg${COLOR_PARAM}`, possibleStats: ['evasion', 'lifesteal', 'int'] },
+    ],
+    Belt: [
+        { name: 'Leather Belt', slot: 'Belt', icon: `${ICON_BASE}/belt-buckles.svg${COLOR_PARAM}`, possibleStats: ['maxHp', 'defense', 'dex'] },
+        { name: 'Sash', slot: 'Belt', icon: `${ICON_BASE}/belt-buckles.svg${COLOR_PARAM}`, possibleStats: ['maxHp', 'evasion', 'lifesteal'] },
+        { name: 'Girdle', slot: 'Belt', icon: `${ICON_BASE}/belt-buckles.svg${COLOR_PARAM}`, possibleStats: ['defense', 'blockChance', 'str'] },
+        { name: 'Heavy Belt', slot: 'Belt', icon: `${ICON_BASE}/belt-buckles.svg${COLOR_PARAM}`, possibleStats: ['defense', 'maxHp', 'str'] },
     ],
 };
 

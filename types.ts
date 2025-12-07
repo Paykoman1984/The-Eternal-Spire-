@@ -26,8 +26,19 @@ export interface PlayerClass {
   icon: string;
 }
 
-// Updated Slots
-export type GearSlot = 'MainHand' | 'OffHand' | 'Helmet' | 'Armor' | 'Boots' | 'Gloves';
+// Updated Slots with Accessories
+export type GearSlot = 
+  | 'MainHand' 
+  | 'OffHand' 
+  | 'Helmet' 
+  | 'Armor' 
+  | 'Gloves' 
+  | 'Boots' 
+  | 'Necklace' 
+  | 'Earring' 
+  | 'Ring' 
+  | 'Belt';
+
 export type EquipmentSlot = GearSlot | 'Potions';
 
 export type Rarity = 'Common' | 'Uncommon' | 'Rare' | 'Epic' | 'Legendary';

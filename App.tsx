@@ -1,4 +1,6 @@
 
+
+
 import React, { useState, useCallback, useEffect } from 'react';
 import type { GameScreen, Player, PlayerClass, RunState, CombatLog, Equipment, GearSlot, Achievement } from './types';
 import { generateEnemy } from './utils/combat';
@@ -158,6 +160,10 @@ const App: React.FC = () => {
                                     if (item.icon.includes('leather-glove') || item.icon.includes('winter-gloves') || item.icon.includes('magic-palm') || item.icon.includes('fingerless-gloves') || item.icon.includes('spellbinders')) item.icon = `${ICON_BASE}/gloves.svg${COLOR_PARAM}`;
                                     if (item.icon.includes('metal-hand') || item.icon.includes('iron-gauntlets')) item.icon = `${ICON_BASE}/mailed-fist.svg${COLOR_PARAM}`;
                                     if (item.icon.includes('mystic-wraps') || item.icon.includes('cloth-wraps')) item.icon = `${ICON_BASE}/hand-bandage.svg${COLOR_PARAM}`;
+                                    
+                                    // Fix Belt Icons
+                                    if (item.icon.includes('sash')) item.icon = `${ICON_BASE}/belt-buckles.svg${COLOR_PARAM}`;
+                                    if (item.icon.includes('belt.svg')) item.icon = `${ICON_BASE}/belt-buckles.svg${COLOR_PARAM}`;
                                 }
 
                                 // 2. Name-based Specific Overrides (Stronger than generic URL checks)
@@ -168,6 +174,9 @@ const App: React.FC = () => {
                                     if (item.name.includes('Iron Shield')) item.icon = `${ICON_BASE}/shield.svg${COLOR_PARAM}`;
                                     if (item.name.includes('Scepter')) item.icon = `${ICON_BASE}/sceptre.svg${COLOR_PARAM}`;
                                     if (item.name.includes('Greatsword') || item.name.includes('Zweihander')) item.icon = `${ICON_BASE}/two-handed-sword.svg${COLOR_PARAM}`;
+                                    
+                                    if (item.name.includes('Sash') || item.name.includes('Girdle')) item.icon = `${ICON_BASE}/belt-buckles.svg${COLOR_PARAM}`;
+                                    if (item.name.includes('Belt') && !item.name.includes('Heavy')) item.icon = `${ICON_BASE}/belt-buckles.svg${COLOR_PARAM}`;
                                 }
 
                                 return item;
@@ -331,6 +340,8 @@ const App: React.FC = () => {
   
   const handleAccountLevelUp = useCallback((currentPlayer: Player): Player => {
       let updatedPlayer = { ...currentPlayer };
+      let shouldRefreshShop = false;
+
       while (updatedPlayer.xp >= updatedPlayer.xpToNextLevel) {
           updatedPlayer.xp -= updatedPlayer.xpToNextLevel;
           updatedPlayer.level += 1;
@@ -340,9 +351,19 @@ const App: React.FC = () => {
           updatedPlayer.baseStats.dex += 1;
           updatedPlayer.baseStats.int += 1;
           updatedPlayer.baseStats.defense += 1;
+          
+          // Auto Refresh Shop every 5 levels
+          if (updatedPlayer.level % 5 === 0) {
+              shouldRefreshShop = true;
+          }
       }
 
       updatedPlayer = recalculatePlayerStats(updatedPlayer);
+      
+      if (shouldRefreshShop) {
+          updatedPlayer.shopInventory = generateShopInventory(updatedPlayer);
+      }
+
       return updatedPlayer;
   }, []);
 
@@ -488,6 +509,9 @@ const App: React.FC = () => {
 
       if (nextPlayer.level > activePlayer.level) {
           logs.push({ message: `Account Level Up! You are now level ${nextPlayer.level}.`, color: 'text-[#D6721C]' });
+          if (Math.floor(nextPlayer.level / 5) > Math.floor(activePlayer.level / 5)) {
+               logs.push({ message: `Shop New Arrivals! Stock refreshed.`, color: 'text-purple-400' });
+          }
       }
       if (hpDiffAccount > 0) {
           newRunState.playerCurrentHpInRun += hpDiffAccount;

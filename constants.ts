@@ -1,4 +1,5 @@
 
+
 import type { PlayerClass, EquipmentSlot, GearSlot } from './types';
 
 const ICON_BASE = "https://api.iconify.design/game-icons";
@@ -33,8 +34,12 @@ export const GEAR_SLOTS: GearSlot[] = [
   'OffHand',
   'Helmet',
   'Armor',
-  'Boots',
   'Gloves',
+  'Boots',
+  'Necklace',
+  'Earring',
+  'Ring',
+  'Belt',
 ];
 
 
@@ -43,7 +48,11 @@ export const EQUIPMENT_SLOTS: EquipmentSlot[] = [
   'OffHand',
   'Helmet',
   'Armor',
-  'Boots',
   'Gloves',
+  'Boots',
+  'Necklace',
+  'Earring',
+  'Ring',
+  'Belt',
   'Potions',
 ];

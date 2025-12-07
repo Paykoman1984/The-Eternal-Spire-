@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import type { Player, EquipmentSlot, Equipment } from '../../types';
+import type { Player, EquipmentSlot, Equipment, Stats } from '../../types';
 import { RARITY_COLORS } from '../../data/items';
 
 interface MainGameScreenProps {
@@ -15,12 +15,17 @@ interface MainGameScreenProps {
 const ICON_BASE = "https://api.iconify.design/game-icons";
 const COLOR_PARAM = "?color=%23e2e8f0";
 
-const StatRow: React.FC<{ label: string; value: string | number; color?: string; subLabel?: string }> = ({ label, value, color, subLabel }) => (
-    <div className="flex justify-between items-baseline w-full">
-        <div className="flex flex-col leading-none">
-            <span className="text-[10px] font-bold text-slate-500 uppercase">{label}</span>
+const StatRow: React.FC<{ label: string; value: string | number; color?: string; buff?: number }> = ({ label, value, color, buff }) => (
+    <div className="flex justify-between items-center w-full">
+        <span className="text-[10px] font-bold text-slate-500 uppercase">{label}</span>
+        <div className="flex items-center justify-end gap-1.5">
+            <span className={`text-xs font-bold ${color || 'text-slate-200'}`}>{value}</span>
+            {buff !== undefined && buff > 0 && (
+                <span className="text-[8px] font-bold text-[#D6721C] bg-[#D6721C]/10 px-1 rounded border border-[#D6721C]/30" title={`Account Bonus: +${buff}%`}>
+                    +{buff}%
+                </span>
+            )}
         </div>
-        <span className={`text-xs font-bold ${color || 'text-slate-200'}`}>{value}</span>
     </div>
 );
 
@@ -33,10 +38,10 @@ const EquipmentSlotDisplay: React.FC<{
     let tooltipPositionClass = "bottom-full left-1/2 -translate-x-1/2 mb-2"; 
     
     // Adjust tooltips based on slot position in the vertical paper doll
-    if (['Helmet', 'Armor'].includes(slot)) {
+    if (['Helmet', 'Armor', 'Gloves', 'Boots'].includes(slot)) {
         tooltipPositionClass = "left-full top-1/2 -translate-y-1/2 ml-2";
     }
-    if (['Gloves', 'Boots'].includes(slot)) {
+    if (['Necklace', 'Earring', 'Ring', 'Belt'].includes(slot)) {
         tooltipPositionClass = "right-full top-1/2 -translate-y-1/2 mr-2";
     }
 
@@ -70,12 +75,12 @@ const EquipmentSlotDisplay: React.FC<{
         return null;
     };
 
-    const slotSizeClass = "w-10 h-10 md:w-12 md:h-12"; 
+    const slotSizeClass = "w-10 h-10 md:w-11 md:h-11"; 
     const containerClass = isGhost 
         ? `${slotSizeClass} bg-slate-800/40 border-2 border-slate-600/50 rounded-lg flex flex-col items-center justify-center p-1 text-center shadow-md grayscale opacity-50`
         : item 
             ? `${slotSizeClass} bg-slate-800 border-2 border-slate-600 rounded-lg flex flex-col items-center justify-center p-1 text-center shadow-md cursor-help`
-            : `${slotSizeClass} bg-slate-900/40 border-2 border-dashed border-slate-700 rounded-lg flex flex-col items-center justify-center p-1 text-center hover:border-[#D6721C] hover:bg-slate-800/50 transition-colors duration-300`;
+            : `${slotSizeClass} bg-slate-900/40 border-2 border-dashed border-slate-700 rounded-lg flex flex-col items-center justify-center p-0.5 text-center hover:border-[#D6721C] hover:bg-slate-800/50 transition-colors duration-300`;
 
     return (
         <div className="relative group w-full h-full flex items-center justify-center hover:z-[100]">
@@ -87,7 +92,7 @@ const EquipmentSlotDisplay: React.FC<{
                             <p className="text-2xl drop-shadow-md">{item.icon}</p>
                         )
                     ) : (
-                        <p className="text-[7px] leading-none text-slate-600 uppercase font-bold tracking-wider">{slot}</p>
+                        <p className="text-[5px] md:text-[6px] leading-tight text-slate-600 uppercase font-bold tracking-wider break-words w-full">{slot}</p>
                     )}
             </div>
             {renderTooltip()}
@@ -144,6 +149,7 @@ const MainGameScreen: React.FC<MainGameScreenProps> = ({ player, onExitToProfile
   
   const mainHandItem = player.equipment.MainHand;
   const isTwoHandedEquipped = mainHandItem?.isTwoHanded;
+  const buffs = player.accountBuffs || {};
 
   const bagItems: BagItem[] = [];
   if (player.potionCount > 0) {
@@ -255,28 +261,27 @@ const MainGameScreen: React.FC<MainGameScreenProps> = ({ player, onExitToProfile
                     </svg>
                 </div>
 
-                {/* Equipment Slots - Tighter Packing */}
-                {/* Left Column (Head, Body) */}
-                <div className="absolute top-10 left-1 z-10 hover:z-[100]">
+                {/* Left Column: Armor Stack */}
+                <div className="absolute top-16 left-1 z-10 hover:z-[100] flex flex-col gap-1.5">
                     <EquipmentSlotDisplay slot="Helmet" item={player.equipment.Helmet} />
-                </div>
-                <div className="absolute top-24 left-1 z-10 hover:z-[100]">
                     <EquipmentSlotDisplay slot="Armor" item={player.equipment.Armor} />
-                </div>
-
-                {/* Right Column (Hands, Feet) */}
-                <div className="absolute top-10 right-1 z-10 hover:z-[100]">
                     <EquipmentSlotDisplay slot="Gloves" item={player.equipment.Gloves} />
-                </div>
-                <div className="absolute top-24 right-1 z-10 hover:z-[100]">
                     <EquipmentSlotDisplay slot="Boots" item={player.equipment.Boots} />
                 </div>
 
-                {/* Bottom Row (Weapons) - Moved up slightly */}
-                <div className="absolute bottom-6 right-[52%] z-10 hover:z-[100]">
+                {/* Right Column: Accessories Stack */}
+                <div className="absolute top-16 right-1 z-10 hover:z-[100] flex flex-col gap-1.5">
+                    <EquipmentSlotDisplay slot="Necklace" item={player.equipment.Necklace} />
+                    <EquipmentSlotDisplay slot="Earring" item={player.equipment.Earring} />
+                    <EquipmentSlotDisplay slot="Ring" item={player.equipment.Ring} />
+                    <EquipmentSlotDisplay slot="Belt" item={player.equipment.Belt} />
+                </div>
+
+                {/* Bottom Row (Weapons) - Moved up by ~5px (bottom-6 is 24px, now bottom-[29px]) */}
+                <div className="absolute bottom-[29px] right-[52%] z-10 hover:z-[100]">
                     <EquipmentSlotDisplay slot="MainHand" item={player.equipment.MainHand} />
                 </div>
-                <div className="absolute bottom-6 left-[52%] z-10 hover:z-[100]">
+                <div className="absolute bottom-[29px] left-[52%] z-10 hover:z-[100]">
                     <EquipmentSlotDisplay 
                         slot="OffHand" 
                         item={isTwoHandedEquipped ? mainHandItem : player.equipment.OffHand} 
@@ -291,27 +296,27 @@ const MainGameScreen: React.FC<MainGameScreenProps> = ({ player, onExitToProfile
             <div>
                 <h3 className="text-[9px] font-bold text-slate-500 uppercase tracking-widest border-b border-slate-700 pb-0.5 mb-1">Attributes</h3>
                 <div className="space-y-1">
-                    <StatRow label="STR" value={player.currentStats.str} color="text-red-400" />
-                    <StatRow label="DEX" value={player.currentStats.dex} color="text-green-400" />
-                    <StatRow label="INT" value={player.currentStats.int} color="text-blue-400" />
+                    <StatRow label="STR" value={player.currentStats.str} color="text-red-400" buff={buffs.str} />
+                    <StatRow label="DEX" value={player.currentStats.dex} color="text-green-400" buff={buffs.dex} />
+                    <StatRow label="INT" value={player.currentStats.int} color="text-blue-400" buff={buffs.int} />
                 </div>
             </div>
             
             <div className="mt-1">
                 <h3 className="text-[9px] font-bold text-slate-500 uppercase tracking-widest border-b border-slate-700 pb-0.5 mb-1">Defense</h3>
                 <div className="space-y-1">
-                    <StatRow label="HP" value={player.currentStats.maxHp} />
-                    <StatRow label="DEF" value={player.currentStats.defense} />
-                    <StatRow label="Block" value={`${player.currentStats.blockChance}%`} color="text-cyan-400" />
+                    <StatRow label="HP" value={player.currentStats.maxHp} buff={buffs.maxHp} />
+                    <StatRow label="DEF" value={player.currentStats.defense} buff={buffs.defense} />
+                    <StatRow label="Block" value={`${player.currentStats.blockChance}%`} color="text-cyan-400" buff={buffs.blockChance} />
                 </div>
             </div>
 
             <div className="mt-1">
                 <h3 className="text-[9px] font-bold text-slate-500 uppercase tracking-widest border-b border-slate-700 pb-0.5 mb-1">Offense</h3>
                 <div className="space-y-1">
-                    <StatRow label="Crit" value={`${player.currentStats.critRate}%`} />
-                    <StatRow label="Vamp" value={`${player.currentStats.lifesteal}%`} color="text-pink-400" />
-                    <StatRow label="Eva" value={`${player.currentStats.evasion}%`} />
+                    <StatRow label="Crit" value={`${player.currentStats.critRate}%`} buff={buffs.critRate} />
+                    <StatRow label="Vamp" value={`${player.currentStats.lifesteal}%`} color="text-pink-400" buff={buffs.lifesteal} />
+                    <StatRow label="Eva" value={`${player.currentStats.evasion}%`} buff={buffs.evasion} />
                 </div>
             </div>
         </div>

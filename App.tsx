@@ -1,8 +1,10 @@
 
 
 
+
+
 import React, { useState, useCallback, useEffect } from 'react';
-import type { GameScreen, Player, PlayerClass, RunState, CombatLog, Equipment, GearSlot, Achievement } from './types';
+import type { GameScreen, Player, PlayerClass, RunState, CombatLog, Equipment, GearSlot, Achievement, Rarity } from './types';
 import { generateEnemy } from './utils/combat';
 import { generateLoot } from './utils/loot';
 import { generateShopInventory } from './utils/shop';
@@ -30,41 +32,46 @@ const App: React.FC = () => {
   const [gameScreen, setGameScreen] = useState<GameScreen>('start');
   const [isPortrait, setIsPortrait] = useState(true);
 
-  // Portrait Mode Check
+  // Portrait Mode Check - Rebuilt to be robust against keyboard flicker
   useEffect(() => {
-    const checkOrientation = () => {
-        let portrait = true;
-        try {
-            if (window.screen && window.screen.orientation && window.screen.orientation.type) {
-                portrait = window.screen.orientation.type.includes('portrait');
-            } else if (window.matchMedia) {
-                portrait = window.matchMedia("(orientation: portrait)").matches;
-            } else {
-                portrait = window.innerHeight >= window.innerWidth;
-            }
-        } catch (e) {
-            portrait = window.innerHeight >= window.innerWidth;
-        }
-        setIsPortrait(portrait);
+    // The most reliable method is the Screen Orientation API, as it tracks physical rotation.
+    const screenOrientation = window.screen?.orientation;
+    // The fallback is a CSS media query, which is better than checking dimensions directly.
+    const portraitMediaQuery = window.matchMedia?.("(orientation: portrait)");
+
+    const handleOrientationChange = () => {
+      if (screenOrientation) {
+        setIsPortrait(screenOrientation.type.startsWith("portrait"));
+      } else if (portraitMediaQuery) {
+        setIsPortrait(portraitMediaQuery.matches);
+      } else {
+        // Last resort for very old browsers, only checked on initial load.
+        setIsPortrait(window.innerHeight > window.innerWidth);
+      }
     };
 
-    checkOrientation();
+    // Set the initial state
+    handleOrientationChange();
 
-    const mediaQuery = window.matchMedia("(orientation: portrait)");
-    const handler = (e: MediaQueryListEvent) => setIsPortrait(e.matches);
-    
-    if (mediaQuery.addEventListener) {
-        mediaQuery.addEventListener("change", handler);
-    } else {
-        window.addEventListener('resize', checkOrientation);
+    // Attach the most reliable listener available
+    if (screenOrientation) {
+      screenOrientation.addEventListener("change", handleOrientationChange);
+    } else if (portraitMediaQuery?.addEventListener) {
+      portraitMediaQuery.addEventListener("change", handleOrientationChange);
     }
+    // IMPORTANT: We NO LONGER add a 'resize' event listener. The 'resize' event is the
+    // root cause of the flickering bug when the on-screen keyboard appears on Android.
+    // By removing it, we sacrifice dynamic orientation detection on very old browsers
+    // in favor of making the app usable on all modern mobile devices.
 
+    // Cleanup listeners
     return () => {
-        if (mediaQuery.removeEventListener) {
-            mediaQuery.removeEventListener("change", handler);
-        } else {
-            window.removeEventListener('resize', checkOrientation);
-        }
+      if (screenOrientation) {
+        screenOrientation.removeEventListener("change", handleOrientationChange);
+      }
+      if (portraitMediaQuery?.removeEventListener) {
+        portraitMediaQuery.removeEventListener("change", handleOrientationChange);
+      }
     };
   }, []);
 
@@ -80,6 +87,19 @@ const App: React.FC = () => {
                         if (p) {
                             const updatedProfile = { ...p };
                             
+                            // Migration: Add Inventory Array if missing
+                            if (!updatedProfile.inventory) {
+                                updatedProfile.inventory = [];
+                            }
+                            
+                            // Migration: Add Eternal Dust
+                            if (updatedProfile.eternalDust === undefined) {
+                                updatedProfile.eternalDust = 0;
+                            }
+                            if (updatedProfile.totalLifetimeDust === undefined) {
+                                updatedProfile.totalLifetimeDust = 0;
+                            }
+
                             if (!updatedProfile.name && updatedProfile.classInfo && updatedProfile.classInfo.name) {
                                 updatedProfile.name = updatedProfile.classInfo.name;
                             }
@@ -129,7 +149,7 @@ const App: React.FC = () => {
                             const fixIcon = (item: Equipment) => {
                                 // 1. URL-based generic fixes (for items with broken filenames)
                                 if (item.icon) {
-                                    if (item.icon.includes('scepter')) item.icon = `${ICON_BASE}/sceptre.svg${COLOR_PARAM}`; // Fix US/UK spelling
+                                    if (item.icon.includes('scepter') || item.icon.includes('sceptre.svg')) item.icon = `${ICON_BASE}/sceptre-of-power.svg${COLOR_PARAM}`; // Fix Broken Sceptre Icon
                                     if (item.icon.includes('morning-star')) item.icon = `${ICON_BASE}/flanged-mace.svg${COLOR_PARAM}`;
                                     
                                     if (item.icon.includes('bastard-sword') || item.icon.includes('great-sword') || item.icon.includes('falchion') || item.icon.includes('gladius')) item.icon = `${ICON_BASE}/broadsword.svg${COLOR_PARAM}`;
@@ -172,7 +192,7 @@ const App: React.FC = () => {
                                     if (item.name.includes('Tower Shield')) item.icon = `${ICON_BASE}/shield.svg${COLOR_PARAM}`;
                                     if (item.name.includes('Longbow')) item.icon = `${ICON_BASE}/bow-arrow.svg${COLOR_PARAM}`;
                                     if (item.name.includes('Iron Shield')) item.icon = `${ICON_BASE}/shield.svg${COLOR_PARAM}`;
-                                    if (item.name.includes('Scepter')) item.icon = `${ICON_BASE}/sceptre.svg${COLOR_PARAM}`;
+                                    if (item.name.includes('Scepter')) item.icon = `${ICON_BASE}/sceptre-of-power.svg${COLOR_PARAM}`; // Specific Fix
                                     if (item.name.includes('Greatsword') || item.name.includes('Zweihander')) item.icon = `${ICON_BASE}/two-handed-sword.svg${COLOR_PARAM}`;
                                     
                                     if (item.name.includes('Sash') || item.name.includes('Girdle')) item.icon = `${ICON_BASE}/belt-buckles.svg${COLOR_PARAM}`;
@@ -188,6 +208,10 @@ const App: React.FC = () => {
                                         updatedProfile.equipment[slot] = fixIcon(updatedProfile.equipment[slot]!);
                                     }
                                 });
+                            }
+                            // Fix icons in inventory too
+                            if (updatedProfile.inventory) {
+                                updatedProfile.inventory = updatedProfile.inventory.map(fixIcon);
                             }
                             
                             if (updatedProfile.shopInventory) {
@@ -310,8 +334,10 @@ const App: React.FC = () => {
       accountBuffs: {},
       currentHp: baseStats.maxHp,
       eternalShards: 0,
+      eternalDust: 0,
       potionCount: 1,
       equipment: startingEquipment,
+      inventory: [],
       shopInventory: [],
       lastShopRefreshLevel: 1,
       shopRefreshes: { level: 1, count: 0 },
@@ -322,6 +348,7 @@ const App: React.FC = () => {
       totalDeaths: 0,
       totalAccumulatedXp: 0,
       totalLifetimeShards: 0,
+      totalLifetimeDust: 0,
       totalFlees: 0,
     };
     
@@ -379,7 +406,7 @@ const App: React.FC = () => {
     setGameScreen('main_game');
   }, [runState, activeProfileIndex, updateCurrentPlayer]);
 
-  const updateAchievementProgress = useCallback((playerState: Player, runState: RunState, type: 'slay' | 'reach_floor', value: string | number): Player => {
+  const updateAchievementProgress = useCallback((playerState: Player, runState: RunState | null, type: 'slay' | 'reach_floor', value: string | number): Player => {
       const newPlayer = { ...playerState };
       ACHIEVEMENTS.forEach(ach => {
           if (ach.type === 'slay' && type === 'slay' && ach.targetId === value) {
@@ -417,33 +444,32 @@ const App: React.FC = () => {
     setGameScreen('combat');
   }, [activeProfileIndex, profiles]);
 
-  const advanceToNextFloor = useCallback(() => {
+  const advanceToNextFloor = useCallback((targetFloor: number, currentPlayerLevel: number) => {
+    // 1. Update Player Achievements (Side Effect moved out of state setter)
+    updateCurrentPlayer(player => {
+        let newPlayer = { ...player };
+        if (targetFloor > newPlayer.maxFloorReached) {
+            newPlayer.maxFloorReached = targetFloor;
+        }
+        newPlayer = updateAchievementProgress(newPlayer, null, 'reach_floor', targetFloor);
+        return newPlayer;
+    });
+
+    // 2. Generate Next Enemy
+    const nextEnemy = generateEnemy(targetFloor, currentPlayerLevel);
+    addLog(`You advance to Floor ${targetFloor}. A ${nextEnemy.name} appears!`, 'text-[#D6721C]');
+
+    // 3. Update Run State
     setRunState(prevRunState => {
         if (!prevRunState) return null;
-        
-        const activePlayer = activeProfileIndex !== null ? profiles[activeProfileIndex] : null;
-        const nextFloor = prevRunState.floor + 1;
-
-        updateCurrentPlayer(player => {
-            let newPlayer = { ...player };
-            if (nextFloor > newPlayer.maxFloorReached) {
-                newPlayer.maxFloorReached = nextFloor;
-            }
-            newPlayer = updateAchievementProgress(newPlayer, prevRunState, 'reach_floor', nextFloor);
-            return newPlayer;
-        });
-
-        const nextEnemy = generateEnemy(nextFloor, activePlayer ? activePlayer.level : 1);
-        addLog(`You advance to Floor ${nextFloor}. A ${nextEnemy.name} appears!`, 'text-[#D6721C]');
-
         return {
             ...prevRunState,
-            floor: nextFloor,
+            floor: targetFloor,
             currentEnemy: nextEnemy,
             pendingLoot: null,
         };
     });
-  }, [updateCurrentPlayer, updateAchievementProgress, activeProfileIndex, profiles]);
+  }, [updateCurrentPlayer, updateAchievementProgress]);
 
   const handleAttack = useCallback(() => {
     const activePlayer = activeProfileIndex !== null ? profiles[activeProfileIndex] : null;
@@ -462,9 +488,20 @@ const App: React.FC = () => {
     } else {
         const playerCrit = Math.random() * 100 < activePlayer.currentStats.critRate;
         const playerAttackStat = Math.max(activePlayer.currentStats.str, activePlayer.currentStats.dex, activePlayer.currentStats.int);
+        
+        // --- NEW PLAYER DAMAGE LOGIC ---
+        // 1. Base Hit (Raw Stat - Defense)
         let playerDamage = Math.max(1, playerAttackStat - newRunState.currentEnemy.stats.defense);
-        if (playerCrit) playerDamage *= 2;
-        playerDamage = Math.floor(playerDamage);
+        
+        // 2. Random Variance (+/- 15%)
+        const damageVariance = 0.85 + Math.random() * 0.3; // 0.85 to 1.15
+        playerDamage = Math.floor(playerDamage * damageVariance);
+        
+        // 3. Crit Multiplier (2.0x)
+        if (playerCrit) playerDamage = Math.floor(playerDamage * 2);
+        
+        // 4. Ensure min 1 damage if it hit
+        playerDamage = Math.max(1, playerDamage);
         
         newRunState.currentEnemy.stats.hp = Math.max(0, newRunState.currentEnemy.stats.hp - playerDamage);
         logs.push({ message: `You hit the ${newRunState.currentEnemy.name} for ${playerDamage} damage${playerCrit ? ' (CRIT!)' : ''}.`, color: playerCrit ? 'text-green-400' : 'text-slate-200' });
@@ -543,10 +580,14 @@ const App: React.FC = () => {
       updateCurrentPlayer(() => nextPlayer);
       
       if (!lootDropped) {
-          setTimeout(advanceToNextFloor, 1000);
+          // Pass the arguments explicitly to prevent stale closure issues
+          const nextFloor = newRunState.floor + 1;
+          const playerLevel = nextPlayer.level;
+          setTimeout(() => advanceToNextFloor(nextFloor, playerLevel), 1000);
       }
 
     } else { 
+      // --- ENEMY ATTACK LOGIC ---
       if (Math.random() * 100 < activePlayer.currentStats.evasion) {
           logs.push({ message: `You dodged the ${newRunState.currentEnemy.name}'s attack!`, color: 'text-red-400' });
       } else {
@@ -556,13 +597,21 @@ const App: React.FC = () => {
           }
 
           const playerDefense = activePlayer.currentStats.defense;
+          // 1. Base Hit
           let enemyDamage = Math.max(1, newRunState.currentEnemy.stats.attack - playerDefense);
           
+          // 2. Random Variance (+/- 15%)
+          const enemyDamageVariance = 0.85 + Math.random() * 0.3;
+          enemyDamage = Math.floor(enemyDamage * enemyDamageVariance);
+          
+          // 3. Block Multiplier (0.5x)
           if (blocked) {
               enemyDamage = Math.max(1, Math.floor(enemyDamage * 0.5));
           }
           
-          enemyDamage = Math.floor(enemyDamage);
+          // 4. Ensure min 1 damage
+          enemyDamage = Math.max(1, enemyDamage);
+          
           newRunState.playerCurrentHpInRun = Math.max(0, newRunState.playerCurrentHpInRun - enemyDamage);
           
           if (blocked) {
@@ -587,53 +636,287 @@ const App: React.FC = () => {
     }
   }, [activeProfileIndex, profiles, runState, advanceToNextFloor, updateAchievementProgress, updateCurrentPlayer, handleAccountLevelUp]);
 
-  const handleLootDecision = useCallback((equip: boolean) => {
+  const handleLootDecision = useCallback((action: 'take' | 'sell' | 'equip') => {
     if (!runState || !runState.pendingLoot) return;
     const activePlayer = activeProfileIndex !== null ? profiles[activeProfileIndex] : null;
     if (!activePlayer) return;
 
     const lootItem = runState.pendingLoot;
-    if (equip) {
-        if (lootItem.slot === 'OffHand') {
-            const mainHand = activePlayer.equipment.MainHand;
-            if (!mainHand || mainHand.isTwoHanded) {
-                addLog("Cannot equip Off-Hand: Requires a One-Handed weapon.", 'text-red-400');
-                advanceToNextFloor();
-                return;
-            }
+    const occupiedSlots = activePlayer.inventory.length + (activePlayer.potionCount > 0 ? 1 : 0);
+    const bagFull = occupiedSlots >= 24;
+    
+    if (action === 'equip') {
+        updateCurrentPlayer(player => {
+             // Logic Check: Can we equip this?
+             const canEquipClass = !lootItem.weaponType || player.classInfo.allowedWeaponTypes.includes(lootItem.weaponType);
+             
+             // Logic Check: OffHand restriction
+             let canEquipOffHand = true;
+             if (lootItem.slot === 'OffHand') {
+                 const mainHand = player.equipment.MainHand;
+                 if (!mainHand || mainHand.isTwoHanded) canEquipOffHand = false;
+             }
+             
+             if (!canEquipClass || !canEquipOffHand) return player;
+
+             let updatedPlayer = { ...player };
+             const newInventory = [...updatedPlayer.inventory];
+             
+             // --- SWAP LOGIC ---
+             let oldItem: Equipment | undefined;
+             
+             // 1. Identify which slot we are filling
+             if (lootItem.slot === 'MainHand') {
+                 oldItem = updatedPlayer.equipment.MainHand;
+                 updatedPlayer.equipment.MainHand = lootItem;
+                 
+                 // Special Case: Equipping 2H un-equips Offhand
+                 if (lootItem.isTwoHanded && updatedPlayer.equipment.OffHand) {
+                     // We need space for the offhand too!
+                     // For simplicity, if we have to unequip TWO items (Main + Off), we need space.
+                     // The generic bagFull check might fail here if we only had 1 slot.
+                     // But let's push both.
+                     newInventory.push(updatedPlayer.equipment.OffHand);
+                     delete updatedPlayer.equipment.OffHand;
+                 }
+             } else if (lootItem.slot === 'OffHand') {
+                 oldItem = updatedPlayer.equipment.OffHand;
+                 updatedPlayer.equipment.OffHand = lootItem;
+             } else {
+                 oldItem = updatedPlayer.equipment[lootItem.slot];
+                 updatedPlayer.equipment[lootItem.slot] = lootItem;
+             }
+
+             // 2. Move old item to inventory
+             if (oldItem) {
+                 newInventory.push(oldItem);
+             }
+             
+             // 3. Check if we overfilled the bag (Should be blocked by UI, but double check)
+             const newOccupiedCount = newInventory.length + (player.potionCount > 0 ? 1 : 0);
+             if (newOccupiedCount > 24) {
+                 addLog("Cannot equip: Inventory full for swapped item.", 'text-red-400');
+                 return player; // Abort
+             }
+             
+             updatedPlayer.inventory = newInventory;
+             addLog(`You equipped ${lootItem.name}.`, 'text-cyan-400');
+             
+             // Recalculate stats immediately
+             const hpBefore = updatedPlayer.currentHp;
+             const maxHpBefore = updatedPlayer.currentStats.maxHp;
+             updatedPlayer = recalculatePlayerStats(updatedPlayer);
+             const maxHpAfter = updatedPlayer.currentStats.maxHp;
+             
+             // Adjust HP percentage if max changed
+             if (maxHpAfter !== maxHpBefore && maxHpBefore > 0) {
+                 const hpPercentage = hpBefore / maxHpBefore;
+                 updatedPlayer.currentHp = Math.round(maxHpAfter * hpPercentage);
+             }
+             // Update Run HP
+             setRunState(prev => prev ? ({...prev, playerCurrentHpInRun: updatedPlayer.currentHp}) : null);
+
+             return updatedPlayer;
+        });
+    } else if (action === 'take') {
+        if (bagFull) {
+            addLog("Inventory is full! Sold item instead.", 'text-red-400');
+            // Fallback to sell logic if full
+            const sellValue = Math.floor((lootItem.cost || 10) * 0.2);
+            updateCurrentPlayer(player => ({
+                ...player,
+                eternalShards: player.eternalShards + sellValue,
+                totalLifetimeShards: (player.totalLifetimeShards || 0) + sellValue
+            }));
+            setRunState(prev => prev ? ({...prev, shardsEarned: prev.shardsEarned + sellValue}) : null);
+        } else {
+            // Add to Inventory
+            updateCurrentPlayer(player => ({
+                ...player,
+                inventory: [...player.inventory, lootItem]
+            }));
+            addLog(`You picked up ${lootItem.name}.`, 'text-slate-200');
         }
 
-        updateCurrentPlayer(player => {
-            let updatedPlayer = { ...player };
-            const slot = lootItem.slot;
-            
-            if (slot === 'MainHand') {
-                updatedPlayer.equipment.MainHand = lootItem;
-                if (lootItem.isTwoHanded) {
-                    delete updatedPlayer.equipment.OffHand;
-                }
-            } else if (slot === 'OffHand') {
-                updatedPlayer.equipment.OffHand = lootItem;
-            } else {
-                updatedPlayer.equipment[slot] = lootItem;
-            }
-            
-            const oldMaxHp = updatedPlayer.currentStats.maxHp;
-            updatedPlayer = recalculatePlayerStats(updatedPlayer);
-            const newMaxHp = updatedPlayer.currentStats.maxHp;
-            
-            const hpDiff = newMaxHp - oldMaxHp;
-            setRunState(prev => prev ? {...prev, playerCurrentHpInRun: Math.min(prev.playerCurrentHpInRun + hpDiff, newMaxHp)} : null);
-
-            return updatedPlayer;
-        });
-        addLog(`You equipped ${lootItem.name}.`, 'text-slate-200');
-    } else {
-        addLog(`You discarded ${lootItem.name}.`, 'text-slate-200');
+    } else if (action === 'sell') {
+        const sellValue = Math.floor((lootItem.cost || 10) * 0.2);
+        updateCurrentPlayer(player => ({
+            ...player,
+            eternalShards: player.eternalShards + sellValue,
+            totalLifetimeShards: (player.totalLifetimeShards || 0) + sellValue
+        }));
+        setRunState(prev => prev ? ({...prev, shardsEarned: prev.shardsEarned + sellValue}) : null);
+        addLog(`You sold ${lootItem.name} for ${sellValue} shards.`, 'text-purple-400');
     }
 
-    advanceToNextFloor();
+    advanceToNextFloor(runState.floor + 1, activePlayer.level);
   }, [runState, advanceToNextFloor, updateCurrentPlayer, activeProfileIndex, profiles]);
+
+  // Equip from Bag (Inventory -> GearSlot)
+  const handleEquipFromBag = useCallback((inventoryIndex: number) => {
+      if (activeProfileIndex === null) return;
+      
+      updateCurrentPlayer(player => {
+          const itemToEquip = player.inventory[inventoryIndex];
+          if (!itemToEquip) return player;
+
+          // Check Requirements
+          const canEquipClass = !itemToEquip.weaponType || player.classInfo.allowedWeaponTypes.includes(itemToEquip.weaponType);
+          if (!canEquipClass) return player; 
+
+          // Check OffHand Requirement
+          if (itemToEquip.slot === 'OffHand') {
+              const mainHand = player.equipment.MainHand;
+              if (!mainHand || mainHand.isTwoHanded) return player;
+          }
+
+          let updatedPlayer = { ...player };
+          const slot = itemToEquip.slot;
+          
+          // Remove from inventory
+          const newInventory = [...updatedPlayer.inventory];
+          newInventory.splice(inventoryIndex, 1);
+          
+          let oldItem: Equipment | undefined;
+
+          if (slot === 'MainHand') {
+              oldItem = updatedPlayer.equipment.MainHand;
+              updatedPlayer.equipment.MainHand = itemToEquip;
+              
+              // If equipping 2H, unequip offhand
+              if (itemToEquip.isTwoHanded && updatedPlayer.equipment.OffHand) {
+                  newInventory.push(updatedPlayer.equipment.OffHand);
+                  delete updatedPlayer.equipment.OffHand;
+              }
+          } else if (slot === 'OffHand') {
+              oldItem = updatedPlayer.equipment.OffHand;
+              updatedPlayer.equipment.OffHand = itemToEquip;
+          } else {
+              oldItem = updatedPlayer.equipment[slot];
+              updatedPlayer.equipment[slot] = itemToEquip;
+          }
+          
+          // Return old item to inventory
+          if (oldItem) {
+              newInventory.push(oldItem);
+          }
+          
+          updatedPlayer.inventory = newInventory;
+
+          // Stats Recalculation
+          const hpBefore = updatedPlayer.currentHp;
+          const maxHpBefore = updatedPlayer.currentStats.maxHp;
+          updatedPlayer = recalculatePlayerStats(updatedPlayer);
+          const maxHpAfter = updatedPlayer.currentStats.maxHp;
+          
+          if (maxHpAfter !== maxHpBefore && maxHpBefore > 0) {
+              const hpPercentage = hpBefore / maxHpBefore;
+              updatedPlayer.currentHp = Math.round(maxHpAfter * hpPercentage);
+          }
+          updatedPlayer.currentHp = Math.min(updatedPlayer.currentHp, updatedPlayer.currentStats.maxHp);
+          if (updatedPlayer.currentHp <= 0) updatedPlayer.currentHp = 1;
+
+          return updatedPlayer;
+      });
+  }, [activeProfileIndex, updateCurrentPlayer]);
+
+  // Unequip Item (GearSlot -> Inventory)
+  const handleUnequip = useCallback((slot: GearSlot) => {
+      if (activeProfileIndex === null) return;
+
+      updateCurrentPlayer(player => {
+          const itemToUnequip = player.equipment[slot];
+          if (!itemToUnequip) return player;
+
+          // Check Bag Space
+          const occupiedSlots = player.inventory.length + (player.potionCount > 0 ? 1 : 0);
+          if (occupiedSlots >= 24) return player; // Bag full
+
+          let updatedPlayer = { ...player };
+          
+          // Remove from Equipment
+          delete updatedPlayer.equipment[slot];
+
+          // Add to Inventory
+          updatedPlayer.inventory = [...updatedPlayer.inventory, itemToUnequip];
+
+          // Stats Recalculation
+          const hpBefore = updatedPlayer.currentHp;
+          const maxHpBefore = updatedPlayer.currentStats.maxHp;
+          updatedPlayer = recalculatePlayerStats(updatedPlayer);
+          const maxHpAfter = updatedPlayer.currentStats.maxHp;
+
+          if (maxHpAfter !== maxHpBefore && maxHpBefore > 0) {
+              const hpPercentage = hpBefore / maxHpBefore;
+              updatedPlayer.currentHp = Math.round(maxHpAfter * hpPercentage);
+          }
+          updatedPlayer.currentHp = Math.min(updatedPlayer.currentHp, updatedPlayer.currentStats.maxHp);
+          
+          return updatedPlayer;
+      });
+  }, [activeProfileIndex, updateCurrentPlayer]);
+
+  // Sell Item from Inventory
+  const handleSellFromBag = useCallback((inventoryIndex: number) => {
+      if (activeProfileIndex === null) return;
+
+      updateCurrentPlayer(player => {
+          const itemToSell = player.inventory[inventoryIndex];
+          if (!itemToSell) return player;
+
+          const sellValue = Math.floor((itemToSell.cost || 10) * 0.2);
+          
+          let updatedPlayer = { ...player };
+          
+          // Remove from Inventory
+          const newInventory = [...updatedPlayer.inventory];
+          newInventory.splice(inventoryIndex, 1);
+          updatedPlayer.inventory = newInventory;
+
+          // Add Shards
+          updatedPlayer.eternalShards += sellValue;
+          updatedPlayer.totalLifetimeShards = (updatedPlayer.totalLifetimeShards || 0) + sellValue;
+
+          return updatedPlayer;
+      });
+  }, [activeProfileIndex, updateCurrentPlayer]);
+
+  // Disenchant Item from Inventory
+  const handleDisenchantFromBag = useCallback((inventoryIndex: number) => {
+      if (activeProfileIndex === null) return;
+
+      updateCurrentPlayer(player => {
+          const item = player.inventory[inventoryIndex];
+          if (!item) return player;
+
+          // Dust Value Formula
+          // Common: 1, Uncommon: 3, Rare: 10, Epic: 25, Legendary: 100
+          // Scaled by Item Level slightly
+          const baseDust = {
+              'Common': 1,
+              'Uncommon': 3,
+              'Rare': 10,
+              'Epic': 25,
+              'Legendary': 100
+          }[item.rarity || 'Common'] || 1;
+
+          const dustValue = Math.floor(baseDust * (1 + (item.itemLevel / 20)));
+
+          let updatedPlayer = { ...player };
+          
+          // Remove from Inventory
+          const newInventory = [...updatedPlayer.inventory];
+          newInventory.splice(inventoryIndex, 1);
+          updatedPlayer.inventory = newInventory;
+
+          // Add Dust
+          updatedPlayer.eternalDust = (updatedPlayer.eternalDust || 0) + dustValue;
+          updatedPlayer.totalLifetimeDust = (updatedPlayer.totalLifetimeDust || 0) + dustValue;
+          
+          // We can't log here easily without runState, but UI will update.
+          return updatedPlayer;
+      });
+  }, [activeProfileIndex, updateCurrentPlayer]);
 
   const handleUsePotion = useCallback(() => {
     const activePlayer = activeProfileIndex !== null ? profiles[activeProfileIndex] : null;
@@ -641,7 +924,6 @@ const App: React.FC = () => {
 
     let newRunState = { ...runState };
     let logs: { message: string, color: CombatLog['color'] }[] = [];
-    let playerDefeated = false;
     const POTION_HEAL_AMOUNT = 50;
 
     updateCurrentPlayer(player => ({ ...player, potionCount: player.potionCount - 1 }));
@@ -707,39 +989,19 @@ const App: React.FC = () => {
   const handleBuyShopItem = useCallback((itemToBuy: Equipment) => {
     updateCurrentPlayer(player => {
       if (!itemToBuy.cost || player.eternalShards < itemToBuy.cost) return player;
-      const slot = itemToBuy.slot;
-      if (slot === 'OffHand') {
-          const mainHand = player.equipment.MainHand;
-          if (!mainHand || mainHand.isTwoHanded) return player;
-      }
+      
+      // Check Bag Space logic
+      const occupiedSlots = player.inventory.length + (player.potionCount > 0 ? 1 : 0);
+      if (occupiedSlots >= 24) return player; // Bag Full, can't buy
 
       let updatedPlayer = { ...player };
       updatedPlayer.eternalShards -= itemToBuy.cost;
       
-      if (slot === 'MainHand') {
-            updatedPlayer.equipment.MainHand = { ...itemToBuy };
-            if (itemToBuy.isTwoHanded) {
-                delete updatedPlayer.equipment.OffHand;
-            }
-        } else if (slot === 'OffHand') {
-            updatedPlayer.equipment.OffHand = { ...itemToBuy };
-        } else {
-            updatedPlayer.equipment[slot] = { ...itemToBuy };
-        }
+      // Bought item goes to Inventory now, not auto-equipped
+      updatedPlayer.inventory = [...updatedPlayer.inventory, itemToBuy];
 
       updatedPlayer.shopInventory = updatedPlayer.shopInventory.filter(item => item.name !== itemToBuy.name);
       
-      const hpBefore = updatedPlayer.currentHp;
-      const maxHpBefore = updatedPlayer.currentStats.maxHp;
-      updatedPlayer = recalculatePlayerStats(updatedPlayer);
-      const maxHpAfter = updatedPlayer.currentStats.maxHp;
-      if (maxHpAfter !== maxHpBefore && maxHpBefore > 0) {
-          const hpPercentage = hpBefore / maxHpBefore;
-          updatedPlayer.currentHp = Math.round(maxHpAfter * hpPercentage);
-      }
-      updatedPlayer.currentHp = Math.min(updatedPlayer.currentHp, updatedPlayer.currentStats.maxHp);
-      if (updatedPlayer.currentHp <= 0) updatedPlayer.currentHp = 1;
-
       return updatedPlayer;
     });
   }, [updateCurrentPlayer]);
@@ -775,7 +1037,7 @@ const App: React.FC = () => {
 
   if (!isPortrait) {
       return (
-          <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-8 text-center animate-fadeIn text-slate-200 font-serif">
+          <div className="h-screen bg-slate-900 flex flex-col items-center justify-center p-8 text-center animate-fadeIn text-slate-200 font-serif overflow-hidden">
                <div className="w-16 h-16 mb-4 text-[#D6721C] animate-pulse">
                   <svg fill="currentColor" viewBox="0 0 24 24">
                       <path d="M17 1.01L7 1c-1.1 0-2 .9-2 2v18c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V3c0-1.1-.9-1.99-2-1.99zM17 19H7V5h10v14z"/>
@@ -784,30 +1046,71 @@ const App: React.FC = () => {
               <h1 className="text-2xl font-bold text-[#D6721C] mb-2">Portrait Mode Required</h1>
               <p className="text-slate-400">Please rotate your device to play The Eternal Spire.</p>
           </div>
-      );
+      )
   }
 
+  const activePlayer = activeProfileIndex !== null ? profiles[activeProfileIndex] : null;
+
   const renderScreen = () => {
-    const activePlayer = activeProfileIndex !== null ? profiles[activeProfileIndex] : null;
     switch (gameScreen) {
-      case 'start': return <StartScreen onStart={handleStartGame} />;
-      case 'profile_selection': return <ProfileScreen profiles={profiles} onLoadProfile={handleLoadProfile} onStartNewGame={handleStartNewGameInSlot} onDeleteProfile={handleDeleteProfile} />;
-      case 'name_selection': return <NameSelectionScreen onNameConfirm={handleNameConfirm} onCancel={handleCancelNameSelection} />;
-      case 'class_selection': return <ClassSelectionScreen onClassSelect={handleClassSelect} />;
-      case 'main_game': if (activePlayer) return <MainGameScreen player={activePlayer} onExitToProfiles={handleExitToProfiles} onEnterSpire={handleEnterSpire} onEnterShop={handleEnterShop} onEnterAchievements={handleEnterAchievements} onEnterStats={handleEnterStats} />; break;
-      case 'combat': if (activePlayer && runState) return <CombatScreen player={activePlayer} runState={runState} logs={combatLogs} onAttack={handleAttack} onFlee={handleFlee} onLootDecision={handleLootDecision} onUsePotion={handleUsePotion} />; break;
-      case 'shop': if (activePlayer) return <ShopScreen player={activePlayer} onExit={handleExitSubScreen} onBuyPotion={handleBuyPotion} onBuyShopItem={handleBuyShopItem} onRefresh={handleRefreshShop} />; break;
-      case 'achievements': if (activePlayer) return <AchievementsScreen player={activePlayer} achievements={ACHIEVEMENTS} onExit={handleExitSubScreen} onClaim={handleClaimAchievement} />; break;
-      case 'stats': if (activePlayer) return <StatsScreen player={activePlayer} onExit={handleExitSubScreen} />; break;
-      case 'run_summary': if (runState) return <RunSummaryScreen runState={runState} onClose={handleCloseSummary} />; break;
+      case 'start':
+        return <StartScreen onStart={handleStartGame} />;
+      case 'profile_selection':
+        return <ProfileScreen profiles={profiles} onLoadProfile={handleLoadProfile} onStartNewGame={handleStartNewGameInSlot} onDeleteProfile={handleDeleteProfile} />;
+      case 'name_selection':
+          return <NameSelectionScreen onNameConfirm={handleNameConfirm} onCancel={handleCancelNameSelection} />;
+      case 'class_selection':
+        return <ClassSelectionScreen onClassSelect={handleClassSelect} />;
+      case 'main_game':
+        if (activePlayer) {
+          return <MainGameScreen 
+            player={activePlayer} 
+            onEnterSpire={handleEnterSpire} 
+            onExitToProfiles={handleExitToProfiles} 
+            onEnterShop={handleEnterShop} 
+            onEnterAchievements={handleEnterAchievements} 
+            onEnterStats={handleEnterStats} 
+            onEquipFromBag={handleEquipFromBag} 
+            onSellFromBag={handleSellFromBag}
+            onDisenchantFromBag={handleDisenchantFromBag}
+            onUnequip={handleUnequip}
+          />;
+        }
+        return null; 
+      case 'combat':
+        if (activePlayer && runState) {
+          return <CombatScreen player={activePlayer} runState={runState} logs={combatLogs} onAttack={handleAttack} onFlee={handleFlee} onLootAction={handleLootDecision} onUsePotion={handleUsePotion} />;
+        }
+        return null;
+      case 'run_summary':
+        if (runState) {
+          return <RunSummaryScreen runState={runState} onClose={handleCloseSummary} />;
+        }
+        return null;
+      case 'shop':
+        if (activePlayer) {
+          return <ShopScreen player={activePlayer} onExit={handleExitSubScreen} onBuyPotion={handleBuyPotion} onBuyShopItem={handleBuyShopItem} onRefresh={handleRefreshShop}/>;
+        }
+        return null;
+      case 'achievements':
+        if (activePlayer) {
+          return <AchievementsScreen player={activePlayer} achievements={ACHIEVEMENTS} onExit={handleExitSubScreen} onClaim={handleClaimAchievement} />;
+        }
+        return null;
+      case 'stats':
+        if (activePlayer) {
+          return <StatsScreen player={activePlayer} onExit={handleExitSubScreen} />;
+        }
+        return null;
+      default:
+        return null;
     }
-    return <StartScreen onStart={handleStartGame} />;
   };
 
   return (
-    <div className="h-screen overflow-hidden bg-black/50 text-slate-200 font-serif flex flex-col">
-        {renderScreen()}
-    </div>
+      <div className="h-screen w-screen bg-transparent text-slate-200 font-serif no-scrollbar overflow-hidden">
+          {renderScreen()}
+      </div>
   );
 };
 

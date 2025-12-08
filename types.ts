@@ -66,8 +66,10 @@ export interface Player {
   accountBuffs: Partial<Record<keyof Stats, number>>; 
   currentHp: number; 
   eternalShards: number;
+  eternalDust: number; // New Crafting Currency
   potionCount: number;
   equipment: Partial<Record<GearSlot, Equipment>>;
+  inventory: Equipment[]; // New Bag Storage
   shopInventory: Equipment[];
   lastShopRefreshLevel: number;
   shopRefreshes: { level: number; count: number }; 
@@ -80,6 +82,7 @@ export interface Player {
   totalDeaths: number;
   totalAccumulatedXp: number;
   totalLifetimeShards: number;
+  totalLifetimeDust: number;
   totalFlees: number;
 }
 

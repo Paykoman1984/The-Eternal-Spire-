@@ -9,7 +9,7 @@ interface CombatScreenProps {
   logs: CombatLog[];
   onAttack: () => void;
   onFlee: () => void;
-  onLootDecision: (equip: boolean) => void;
+  onLootAction: (action: 'take' | 'sell' | 'equip') => void;
   onUsePotion: () => void;
 }
 
@@ -105,17 +105,32 @@ const LootDecision: React.FC<{
     player: Player;
     newItem: Equipment;
     oldItem: Equipment | null;
-    onLootDecision: (equip: boolean) => void;
-}> = ({ player, newItem, oldItem, onLootDecision }) => {
+    onLootAction: (action: 'take' | 'sell' | 'equip') => void;
+}> = ({ player, newItem, oldItem, onLootAction }) => {
     const allStats = Array.from(new Set([...Object.keys(newItem.stats), ...Object.keys(oldItem?.stats ?? {})])) as (keyof Stats)[];
     
-    // Check if player can equip this weapon type
-    const canEquip = !newItem.weaponType || player.classInfo.allowedWeaponTypes.includes(newItem.weaponType);
+    // Calculate sell value (20% of cost)
+    const sellValue = Math.floor((newItem.cost || 10) * 0.2);
     
-    // Special Rule: Off Hand items require a 1H Weapon equipped in Main Hand
-    const isOffHand = newItem.slot === 'OffHand';
-    const hasOneHandedWeapon = player.equipment.MainHand && !player.equipment.MainHand.isTwoHanded;
-    const canEquipOffHand = !isOffHand || hasOneHandedWeapon;
+    // Check Bag Space
+    const occupiedCount = player.inventory.length + (player.potionCount > 0 ? 1 : 0);
+    const isBagFull = occupiedCount >= 24;
+    
+    // Equip Validations
+    const canEquipClass = !newItem.weaponType || player.classInfo.allowedWeaponTypes.includes(newItem.weaponType);
+    
+    let canEquipOffHand = true;
+    if (newItem.slot === 'OffHand') {
+        const mainHand = player.equipment.MainHand;
+        if (!mainHand || mainHand.isTwoHanded) canEquipOffHand = false;
+    }
+    
+    // Check if swap is possible with bag constraints
+    // If oldItem exists, it must go to bag. If bag is full, swap not allowed.
+    // Exception: If bag is full but we have a potion taking up a slot? No, strict slot count.
+    const canSwap = !oldItem || !isBagFull; 
+    
+    const canEquip = canEquipClass && canEquipOffHand && canSwap;
 
     return (
         <div className="absolute inset-0 bg-slate-900/90 z-50 flex items-center justify-center animate-fadeIn p-4">
@@ -139,40 +154,39 @@ const LootDecision: React.FC<{
                             />
                         );
                      }) : <p className="text-xs text-slate-500">No stat changes.</p>}
-                     
-                     {/* Warning if equipping this will unequip something else */}
-                     {newItem.isTwoHanded && player.equipment.OffHand && (
-                         <p className="text-[10px] text-red-400 mt-2 font-bold italic text-center">Warning: Equipping this 2H weapon will remove your Off-Hand item.</p>
-                     )}
-                     {newItem.slot === 'OffHand' && player.equipment.MainHand?.isTwoHanded && (
-                         <p className="text-[10px] text-red-400 mt-2 font-bold italic text-center">Warning: Cannot equip. 2H Weapon in use.</p>
-                     )}
                 </div>
-
-                {!canEquip && (
-                    <div className="mb-2 p-2 bg-red-900/50 border border-red-700 rounded text-center">
-                        <p className="text-xs text-red-300 font-bold">Class Restricted</p>
-                        <p className="text-[10px] text-red-400">Can only use: {player.classInfo.allowedWeaponTypes.join(', ')}</p>
-                    </div>
-                )}
                 
-                {!canEquipOffHand && (
-                     <div className="mb-2 p-2 bg-red-900/50 border border-red-700 rounded text-center">
-                        <p className="text-xs text-red-300 font-bold">Restriction</p>
-                        <p className="text-[10px] text-red-400">Requires a One-Handed Weapon equipped.</p>
-                    </div>
+                {isBagFull && canSwap && (
+                     // If canSwap is true (meaning oldItem is null) but bag is full, it's fine.
+                     // Wait, if oldItem is null, we don't need bag space.
+                     // If oldItem exists (canSwap = false), we show error.
+                     !canSwap && <p className="text-[10px] text-red-400 font-bold text-center mb-2">Inventory Full! Cannot swap current item.</p>
                 )}
+                {isBagFull && !canSwap && (
+                     <p className="text-[10px] text-red-400 font-bold text-center mb-2">Inventory Full! You must Sell.</p>
+                )}
+                 {!canEquipClass && <p className="text-[10px] text-red-400 font-bold text-center mb-2">Class Restricted</p>}
+                 {!canEquipOffHand && <p className="text-[10px] text-red-400 font-bold text-center mb-2">Requires 1H Weapon</p>}
 
-                <div className="grid grid-cols-2 gap-2">
+
+                <div className="grid grid-cols-3 gap-2">
                     <button 
-                        onClick={() => onLootDecision(true)}
-                        disabled={!canEquip || !canEquipOffHand}
-                        className="w-full px-4 py-1.5 bg-green-600 text-white font-bold text-sm rounded-lg hover:bg-green-500 transition-colors disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed"
+                        onClick={() => onLootAction('equip')}
+                        disabled={!canEquip}
+                        className="w-full px-2 py-1.5 bg-cyan-700 text-white font-bold text-sm rounded-lg hover:bg-cyan-600 transition-colors disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed"
                     >Equip</button>
                     <button 
-                        onClick={() => onLootDecision(false)}
-                        className="w-full px-4 py-1.5 bg-slate-600 text-slate-200 font-bold text-sm rounded-lg hover:bg-slate-500 transition-colors"
-                    >Discard</button>
+                        onClick={() => onLootAction('take')}
+                        disabled={isBagFull}
+                        className="w-full px-2 py-1.5 bg-green-600 text-white font-bold text-sm rounded-lg hover:bg-green-500 transition-colors disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed"
+                    >Take</button>
+                    <button 
+                        onClick={() => onLootAction('sell')}
+                        className="w-full px-2 py-1.5 bg-purple-700 text-white font-bold text-sm rounded-lg hover:bg-purple-600 transition-colors flex items-center justify-center gap-1"
+                    >
+                        <span>Sell</span>
+                        <span className="text-[9px] bg-black/30 px-1 rounded text-purple-200">{sellValue}</span>
+                    </button>
                 </div>
             </div>
         </div>
@@ -180,7 +194,7 @@ const LootDecision: React.FC<{
 };
 
 
-const CombatScreen: React.FC<CombatScreenProps> = ({ player, runState, logs, onAttack, onFlee, onLootDecision, onUsePotion }) => {
+const CombatScreen: React.FC<CombatScreenProps> = ({ player, runState, logs, onAttack, onFlee, onLootAction, onUsePotion }) => {
   const logContainerRef = useRef<HTMLDivElement>(null);
   const lastAttackTime = useRef(0);
 
@@ -212,7 +226,7 @@ const CombatScreen: React.FC<CombatScreenProps> = ({ player, runState, logs, onA
               player={player}
               newItem={runState.pendingLoot}
               oldItem={currentlyEquipped}
-              onLootDecision={onLootDecision}
+              onLootAction={onLootAction}
            />
         )}
         

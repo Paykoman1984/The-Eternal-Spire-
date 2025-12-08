@@ -1,6 +1,5 @@
-
-import React, { useState, useEffect } from 'react';
-import type { Player, EquipmentSlot, Equipment, Stats } from '../../types';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import type { Player, EquipmentSlot, Equipment, Stats, GearSlot } from '../../types';
 import { RARITY_COLORS } from '../../data/items';
 
 interface MainGameScreenProps {
@@ -10,10 +9,16 @@ interface MainGameScreenProps {
   onEnterShop: () => void;
   onEnterAchievements: () => void;
   onEnterStats: () => void;
+  onEquipFromBag: (index: number) => void;
+  onSellFromBag: (index: number) => void;
+  onDisenchantFromBag: (index: number) => void;
+  onUnequip: (slot: GearSlot) => void;
 }
 
 const ICON_BASE = "https://api.iconify.design/game-icons";
 const COLOR_PARAM = "?color=%23e2e8f0";
+
+type BagMode = 'equip' | 'sell' | 'disenchant';
 
 const StatRow: React.FC<{ label: string; value: string | number; color?: string; buff?: number }> = ({ label, value, color, buff }) => (
     <div className="flex justify-between items-center w-full">
@@ -29,11 +34,54 @@ const StatRow: React.FC<{ label: string; value: string | number; color?: string;
     </div>
 );
 
+// HOOK for Long Press Logic
+const useLongPress = (onLongPress: () => void, onClick: () => void, options = { delay: 500 }) => {
+    const [startLongPress, setStartLongPress] = useState(false);
+    const timeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const targetRef = useRef<EventTarget | null>(null);
+    const isLongPressTriggered = useRef(false); // Track if long press actually fired
+
+    const start = useCallback((event: React.MouseEvent | React.TouchEvent) => {
+        setStartLongPress(true);
+        isLongPressTriggered.current = false; // Reset trigger state
+        targetRef.current = event.target;
+        timeout.current = setTimeout(() => {
+            onLongPress();
+            isLongPressTriggered.current = true; // Mark as triggered so we don't click later
+        }, options.delay);
+    }, [onLongPress, options.delay]);
+
+    const clear = useCallback((event: React.MouseEvent | React.TouchEvent, shouldTriggerClick: boolean) => {
+        if (timeout.current) {
+            clearTimeout(timeout.current);
+            timeout.current = null;
+        }
+        setStartLongPress(false);
+        
+        // Only trigger click if we meant to click AND long press didn't happen
+        if (shouldTriggerClick && startLongPress && !isLongPressTriggered.current && targetRef.current === event.target) {
+            onClick();
+        }
+        isLongPressTriggered.current = false;
+    }, [onClick, startLongPress]);
+
+    return {
+        onMouseDown: (e: React.MouseEvent) => start(e),
+        onTouchStart: (e: React.TouchEvent) => start(e),
+        onMouseUp: (e: React.MouseEvent) => clear(e, true),
+        onMouseLeave: (e: React.MouseEvent) => clear(e, false), // Cancel click if leaving
+        onTouchEnd: (e: React.TouchEvent) => clear(e, true),
+    };
+};
+
 const EquipmentSlotDisplay: React.FC<{ 
     slot: EquipmentSlot; 
     item: Equipment | undefined; 
     isGhost?: boolean;
-}> = ({ slot, item, isGhost }) => {
+    onUnequip?: () => void;
+    activeTooltipSlot: string | null;
+    setActiveTooltipSlot: (slot: string | null) => void;
+}> = ({ slot, item, isGhost, onUnequip, activeTooltipSlot, setActiveTooltipSlot }) => {
     
     let tooltipPositionClass = "bottom-full left-1/2 -translate-x-1/2 mb-2"; 
     
@@ -45,11 +93,27 @@ const EquipmentSlotDisplay: React.FC<{
         tooltipPositionClass = "right-full top-1/2 -translate-y-1/2 mr-2";
     }
 
+    const isActive = activeTooltipSlot === slot;
+
+    const handleLongPress = () => {
+        setActiveTooltipSlot(slot);
+    };
+
+    const handleClick = () => {
+        // Hide tooltip on click (if it was somehow open)
+        setActiveTooltipSlot(null);
+        if (item && onUnequip && !isGhost) {
+            onUnequip();
+        }
+    };
+
+    const longPressEvents = useLongPress(handleLongPress, handleClick, { delay: 400 });
+
     const renderTooltip = () => {
-        if (item) {
+        if (item && isActive) {
             const rarityColor = RARITY_COLORS[item.rarity || 'Common'];
             return (
-                <div className={`absolute ${tooltipPositionClass} w-max max-w-[10rem] md:max-w-[14rem] whitespace-normal break-words invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-opacity duration-300 bg-slate-900 border border-[#D6721C] rounded-md shadow-lg p-2 text-xs z-[9999] pointer-events-none`}>
+                <div className={`absolute ${tooltipPositionClass} w-32 md:w-40 whitespace-normal break-words bg-slate-950 opacity-100 border border-[#D6721C] rounded-md shadow-xl p-2 text-xs z-[9999] pointer-events-none`}>
                     <div className="flex justify-between items-start gap-2 mb-1">
                         <p className={`font-bold ${rarityColor} leading-tight text-left`}>{item.name}</p>
                         <p className="text-slate-500 text-[9px] flex-shrink-0 pt-0.5">iLvl {item.itemLevel}</p>
@@ -69,6 +133,7 @@ const EquipmentSlotDisplay: React.FC<{
                             })}
                         </div>
                     )}
+                    <p className="text-[8px] text-slate-500 italic mt-1 text-center">Tap to Unequip</p>
                 </div>
             );
         }
@@ -79,20 +144,27 @@ const EquipmentSlotDisplay: React.FC<{
     const containerClass = isGhost 
         ? `${slotSizeClass} bg-slate-800/40 border-2 border-slate-600/50 rounded-lg flex flex-col items-center justify-center p-1 text-center shadow-md grayscale opacity-50`
         : item 
-            ? `${slotSizeClass} bg-slate-800 border-2 border-slate-600 rounded-lg flex flex-col items-center justify-center p-1 text-center shadow-md cursor-help`
+            ? `${slotSizeClass} bg-slate-800 border-2 border-slate-600 rounded-lg flex flex-col items-center justify-center p-1 text-center shadow-md cursor-pointer select-none`
             : `${slotSizeClass} bg-slate-900/40 border-2 border-dashed border-slate-700 rounded-lg flex flex-col items-center justify-center p-0.5 text-center hover:border-[#D6721C] hover:bg-slate-800/50 transition-colors duration-300`;
 
+    // Wrap events only if item exists and not ghost
+    const eventHandlers = (item && !isGhost) ? longPressEvents : {};
+
     return (
-        <div className="relative group w-full h-full flex items-center justify-center hover:z-[100]">
+        <div 
+            className="relative group w-full h-full flex items-center justify-center hover:z-[100]"
+            {...eventHandlers}
+            onContextMenu={(e) => e.preventDefault()} // Disable right click menu
+        >
             <div className={containerClass}>
                     {item ? (
                         item.icon.startsWith('http') ? (
-                            <img src={item.icon} alt={item.name} className="w-full h-full object-contain" />
+                            <img src={item.icon} alt={item.name} className="w-full h-full object-contain pointer-events-none" />
                         ) : (
-                            <p className="text-2xl drop-shadow-md">{item.icon}</p>
+                            <p className="text-2xl drop-shadow-md pointer-events-none">{item.icon}</p>
                         )
                     ) : (
-                        <p className="text-[5px] md:text-[6px] leading-tight text-slate-600 uppercase font-bold tracking-wider break-words w-full">{slot}</p>
+                        <p className="text-[5px] md:text-[6px] leading-tight text-slate-600 uppercase font-bold tracking-wider break-words w-full pointer-events-none">{slot}</p>
                     )}
             </div>
             {renderTooltip()}
@@ -100,42 +172,124 @@ const EquipmentSlotDisplay: React.FC<{
     );
 };
 
-interface BagItem {
+interface BagItemDisplay {
     id: string;
     icon: string;
     name: string;
-    count: number;
+    count?: number;
     description: string;
     rarityColor?: string;
+    stats?: Partial<Stats>;
+    itemLevel?: number;
+    onClick?: () => void;
+    cost?: number; // Added for sell logic
+    dustValue?: number; // Added for disenchant logic
 }
 
-const BagSlot: React.FC<{ item?: BagItem; index: number }> = ({ item, index }) => {
-    // Dynamic Tooltip: Left side columns tooltip to right, Right side columns tooltip to left
+const BagSlot: React.FC<{ 
+    item?: BagItemDisplay; 
+    index: number; 
+    activeTooltipId: string | null;
+    setActiveTooltipId: (id: string | null) => void;
+    bagMode: BagMode;
+}> = ({ item, index, activeTooltipId, setActiveTooltipId, bagMode }) => {
+    
+    // Dynamic Tooltip Position
     const col = index % 8;
     const tooltipPosition = col < 4 
         ? "left-full top-1/2 -translate-y-1/2 ml-2" 
         : "right-full top-1/2 -translate-y-1/2 mr-2";
 
+    const isActive = item && activeTooltipId === item.id;
+
+    const handleLongPress = () => {
+        if (item) setActiveTooltipId(item.id);
+    };
+
+    const handleClick = () => {
+        setActiveTooltipId(null);
+        if (item && item.onClick) {
+            item.onClick();
+        }
+    };
+
+    const longPressEvents = useLongPress(handleLongPress, handleClick, { delay: 400 });
+    const eventHandlers = item ? longPressEvents : {};
+
+    const sellValue = item?.cost ? Math.floor(item.cost * 0.2) : 0;
+
+    let slotClass = 'bg-slate-900/40 border-slate-700';
+    if (item) {
+        if (bagMode === 'sell') {
+            slotClass = 'bg-red-900/30 border-red-500 cursor-alias';
+        } else if (bagMode === 'disenchant') {
+             slotClass = 'bg-cyan-900/30 border-cyan-500 cursor-alias';
+        } else {
+             slotClass = 'bg-slate-800 border-slate-600 cursor-pointer';
+        }
+    }
+
     return (
-        <div className={`aspect-square rounded-md border flex items-center justify-center relative group transition-colors duration-200 hover:z-[100] ${item ? 'bg-slate-800 border-slate-600 hover:border-[#D6721C] cursor-help' : 'bg-slate-900/40 border-slate-700 hover:border-slate-500'}`}>
+        <div 
+            {...eventHandlers}
+            onContextMenu={(e) => e.preventDefault()}
+            className={`aspect-square rounded-md border flex items-center justify-center relative transition-colors duration-200 hover:z-[100] ${slotClass}`}
+        >
             {item && (
                 <>
                     {item.icon.startsWith('http') ? (
-                         <img src={item.icon} alt={item.name} className="w-3/4 h-3/4 object-contain" />
+                         <img src={item.icon} alt={item.name} className="w-3/4 h-3/4 object-contain pointer-events-none" />
                     ) : (
-                        <span className="text-xl drop-shadow-sm">{item.icon}</span>
+                        <span className="text-xl drop-shadow-sm pointer-events-none">{item.icon}</span>
                     )}
-                    {item.count > 1 && (
-                        <span className="absolute bottom-0.5 right-1 text-[9px] font-bold text-slate-200 bg-slate-900/80 px-1 rounded">
+                    {item.count !== undefined && item.count > 1 && (
+                        <span className="absolute bottom-0.5 right-1 text-[9px] font-bold text-slate-200 bg-slate-900/80 px-1 rounded pointer-events-none">
                             x{item.count}
                         </span>
                     )}
+                    {/* Sell Mode Icon Overlay */}
+                    {bagMode === 'sell' && item.count === undefined && (
+                         <div className="absolute top-0 right-0 p-0.5 bg-red-600 rounded-bl-md pointer-events-none">
+                             <span className="text-[8px] font-bold text-white">$</span>
+                         </div>
+                    )}
+                    {/* Disenchant Mode Icon Overlay */}
+                     {bagMode === 'disenchant' && item.count === undefined && (
+                         <div className="absolute top-0 right-0 p-0.5 bg-cyan-600 rounded-bl-md pointer-events-none">
+                             <span className="text-[8px] font-bold text-white">✨</span>
+                         </div>
+                    )}
                     
                     {/* Tooltip */}
-                    <div className={`absolute ${tooltipPosition} w-max max-w-[10rem] md:max-w-[14rem] whitespace-normal break-words invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-opacity duration-300 bg-slate-900 border border-[#D6721C] rounded-md shadow-lg p-2 text-xs z-[9999] pointer-events-none`}>
-                        <p className={`font-bold ${item.rarityColor || 'text-[#D6721C]'} leading-tight text-left`}>{item.name}</p>
-                        <p className="text-slate-400 text-[10px] mt-1 leading-tight text-left">{item.description}</p>
-                    </div>
+                    {isActive && (
+                        <div className={`absolute ${tooltipPosition} w-32 md:w-40 whitespace-normal break-words bg-slate-950 opacity-100 border border-[#D6721C] rounded-md shadow-xl p-2 text-xs z-[9999] pointer-events-none text-left`}>
+                            <div className="flex justify-between items-baseline mb-1">
+                                <p className={`font-bold ${item.rarityColor || 'text-[#D6721C]'} leading-tight`}>{item.name}</p>
+                                {item.itemLevel && <span className="text-[9px] text-slate-500 ml-2">iLvl {item.itemLevel}</span>}
+                            </div>
+                            <p className="text-slate-400 text-[10px] leading-tight mb-1">{item.description}</p>
+                            
+                            {item.stats && (
+                                <div className="mt-1 border-t border-slate-600 pt-1 space-y-0.5">
+                                    {Object.entries(item.stats).map(([stat, value]) => (
+                                        <div key={stat} className="flex justify-between text-[10px]">
+                                            <span className="text-slate-300 capitalize">{stat}</span>
+                                            <span className="font-semibold text-green-400">+{value}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                            {item.count === undefined ? (
+                                <div className="mt-2 text-center border-t border-slate-700 pt-1 space-y-0.5">
+                                    {bagMode === 'equip' && <p className="text-[8px] text-green-400 italic">Tap to Equip</p>}
+                                    <p className="text-[8px] text-purple-400 italic">Value: {sellValue}</p>
+                                    <p className="text-[8px] text-cyan-400 italic">Dust: {item.dustValue || 0}</p>
+                                </div>
+                            ) : (
+                                <p className="text-[8px] text-slate-500 mt-1 italic text-center">Cannot Sell/Dust Potions</p>
+                            )}
+                        </div>
+                    )}
                 </>
             )}
         </div>
@@ -143,25 +297,92 @@ const BagSlot: React.FC<{ item?: BagItem; index: number }> = ({ item, index }) =
 };
 
 
-const MainGameScreen: React.FC<MainGameScreenProps> = ({ player, onExitToProfiles, onEnterSpire, onEnterShop, onEnterAchievements, onEnterStats }) => {
+const MainGameScreen: React.FC<MainGameScreenProps> = ({ player, onExitToProfiles, onEnterSpire, onEnterShop, onEnterAchievements, onEnterStats, onEquipFromBag, onSellFromBag, onDisenchantFromBag, onUnequip }) => {
   const [showOptions, setShowOptions] = useState(false);
+  const [activeTooltipId, setActiveTooltipId] = useState<string | null>(null);
+  const [activeEquipTooltipSlot, setActiveEquipTooltipSlot] = useState<string | null>(null);
+  const [bagMode, setBagMode] = useState<BagMode>('equip');
+  const [isProcessingAction, setIsProcessingAction] = useState(false); // Throttle state
+
   const xpPercentage = (player.xp / player.xpToNextLevel) * 100;
   
   const mainHandItem = player.equipment.MainHand;
   const isTwoHandedEquipped = mainHandItem?.isTwoHanded;
   const buffs = player.accountBuffs || {};
 
-  const bagItems: BagItem[] = [];
+  // Action throttler to prevent race conditions or double taps
+  const handleBagAction = (action: () => void) => {
+      if (isProcessingAction) return;
+      setIsProcessingAction(true);
+      action();
+      setTimeout(() => setIsProcessingAction(false), 300);
+  };
+
+  // Build Bag Items List
+  const bagItemsDisplay: BagItemDisplay[] = [];
+  
+  // 1. Potions (Always first if exists)
   if (player.potionCount > 0) {
-      bagItems.push({
+      bagItemsDisplay.push({
           id: 'potion',
           icon: `${ICON_BASE}/health-potion.svg${COLOR_PARAM}`,
           name: 'Health Potion',
           count: player.potionCount,
           description: 'Restores 50 HP.',
-          rarityColor: 'text-green-400'
+          rarityColor: 'text-green-400',
+          onClick: () => {} // Potions can't be equipped or sold directly here
       });
   }
+
+  // 2. Inventory Items
+  player.inventory.forEach((item, idx) => {
+      // Dust Calc
+      const baseDust = {
+          'Common': 1,
+          'Uncommon': 3,
+          'Rare': 10,
+          'Epic': 25,
+          'Legendary': 100
+      }[item.rarity || 'Common'] || 1;
+      const dustValue = Math.floor(baseDust * (1 + (item.itemLevel / 20)));
+
+      bagItemsDisplay.push({
+          id: `item-${idx}-${item.name}`,
+          icon: item.icon,
+          name: item.name,
+          description: `${item.slot} • ${item.rarity}`,
+          rarityColor: RARITY_COLORS[item.rarity],
+          stats: item.stats,
+          itemLevel: item.itemLevel,
+          cost: item.cost,
+          dustValue: dustValue,
+          onClick: () => {
+              handleBagAction(() => {
+                  if (bagMode === 'sell') {
+                      onSellFromBag(idx);
+                  } else if (bagMode === 'disenchant') {
+                      onDisenchantFromBag(idx);
+                  } else {
+                      onEquipFromBag(idx);
+                  }
+              });
+          } 
+      });
+  });
+
+  // Global touch end listener to hide tooltips if user lifts finger/mouse anywhere else
+  useEffect(() => {
+    const clearTooltips = () => {
+        setActiveTooltipId(null);
+        setActiveEquipTooltipSlot(null);
+    };
+    window.addEventListener('mouseup', clearTooltips);
+    window.addEventListener('touchend', clearTooltips);
+    return () => {
+        window.removeEventListener('mouseup', clearTooltips);
+        window.removeEventListener('touchend', clearTooltips);
+    }
+  }, []);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -215,10 +436,14 @@ const MainGameScreen: React.FC<MainGameScreenProps> = ({ player, onExitToProfile
                     <p className="text-[10px] text-slate-400 font-medium">Lvl {player.level} {player.classInfo.name}</p>
                 </div>
             </div>
-            <div className="flex flex-col items-end">
+            <div className="flex flex-col items-end gap-1">
                 <div className="flex items-center gap-1 bg-slate-900/80 px-2 py-0.5 rounded-full border border-slate-600">
                     <span className="text-xs">💎</span>
                     <span className="font-bold text-slate-200 text-xs">{player.eternalShards}</span>
+                </div>
+                <div className="flex items-center gap-1 bg-slate-900/80 px-2 py-0.5 rounded-full border border-slate-600">
+                    <span className="text-xs">🌌</span>
+                    <span className="font-bold text-cyan-200 text-xs">{player.eternalDust || 0}</span>
                 </div>
             </div>
         </div>
@@ -243,6 +468,10 @@ const MainGameScreen: React.FC<MainGameScreenProps> = ({ player, onExitToProfile
              <div className="absolute top-2 left-2 z-0">
                 <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Inventory</h3>
              </div>
+             
+             <div className="absolute top-2 right-2 z-0">
+                <p className="text-[8px] text-slate-600 italic">Hold for Info</p>
+             </div>
 
              {/* Centered container to prevent drift on tablet screens */}
              <div className="relative w-full max-w-[280px] h-full mx-auto">
@@ -262,30 +491,51 @@ const MainGameScreen: React.FC<MainGameScreenProps> = ({ player, onExitToProfile
                 </div>
 
                 {/* Left Column: Armor Stack */}
-                <div className="absolute top-16 left-1 z-10 hover:z-[100] flex flex-col gap-1.5">
-                    <EquipmentSlotDisplay slot="Helmet" item={player.equipment.Helmet} />
-                    <EquipmentSlotDisplay slot="Armor" item={player.equipment.Armor} />
-                    <EquipmentSlotDisplay slot="Gloves" item={player.equipment.Gloves} />
-                    <EquipmentSlotDisplay slot="Boots" item={player.equipment.Boots} />
+                <div className="absolute top-14 left-1 z-10 flex flex-col gap-1.5">
+                    {(['Helmet', 'Armor', 'Gloves', 'Boots'] as GearSlot[]).map(slot => (
+                        <EquipmentSlotDisplay 
+                            key={slot} 
+                            slot={slot} 
+                            item={player.equipment[slot]} 
+                            onUnequip={() => onUnequip(slot)}
+                            activeTooltipSlot={activeEquipTooltipSlot}
+                            setActiveTooltipSlot={setActiveEquipTooltipSlot}
+                        />
+                    ))}
                 </div>
 
                 {/* Right Column: Accessories Stack */}
-                <div className="absolute top-16 right-1 z-10 hover:z-[100] flex flex-col gap-1.5">
-                    <EquipmentSlotDisplay slot="Necklace" item={player.equipment.Necklace} />
-                    <EquipmentSlotDisplay slot="Earring" item={player.equipment.Earring} />
-                    <EquipmentSlotDisplay slot="Ring" item={player.equipment.Ring} />
-                    <EquipmentSlotDisplay slot="Belt" item={player.equipment.Belt} />
+                <div className="absolute top-14 right-1 z-10 flex flex-col gap-1.5">
+                    {(['Necklace', 'Earring', 'Ring', 'Belt'] as GearSlot[]).map(slot => (
+                        <EquipmentSlotDisplay 
+                            key={slot} 
+                            slot={slot} 
+                            item={player.equipment[slot]} 
+                            onUnequip={() => onUnequip(slot)}
+                            activeTooltipSlot={activeEquipTooltipSlot}
+                            setActiveTooltipSlot={setActiveEquipTooltipSlot}
+                        />
+                    ))}
                 </div>
 
                 {/* Bottom Row (Weapons) - Moved up by ~5px (bottom-6 is 24px, now bottom-[29px]) */}
-                <div className="absolute bottom-[29px] right-[52%] z-10 hover:z-[100]">
-                    <EquipmentSlotDisplay slot="MainHand" item={player.equipment.MainHand} />
+                <div className="absolute bottom-[29px] right-[52%] z-10">
+                    <EquipmentSlotDisplay 
+                        slot="MainHand" 
+                        item={player.equipment.MainHand} 
+                        onUnequip={() => onUnequip('MainHand')}
+                        activeTooltipSlot={activeEquipTooltipSlot}
+                        setActiveTooltipSlot={setActiveEquipTooltipSlot}
+                    />
                 </div>
-                <div className="absolute bottom-[29px] left-[52%] z-10 hover:z-[100]">
+                <div className="absolute bottom-[29px] left-[52%] z-10">
                     <EquipmentSlotDisplay 
                         slot="OffHand" 
                         item={isTwoHandedEquipped ? mainHandItem : player.equipment.OffHand} 
                         isGhost={isTwoHandedEquipped} 
+                        onUnequip={() => onUnequip('OffHand')}
+                        activeTooltipSlot={activeEquipTooltipSlot}
+                        setActiveTooltipSlot={setActiveEquipTooltipSlot}
                     />
                 </div>
             </div>
@@ -325,14 +575,47 @@ const MainGameScreen: React.FC<MainGameScreenProps> = ({ player, onExitToProfile
       {/* BOTTOM: Bag & Actions */}
       <div className="w-full flex flex-col gap-2 flex-shrink-0">
           {/* Bag */}
-          <div className="bg-slate-800 border border-slate-700 rounded-xl p-2 shadow-xl">
+          <div className={`bg-slate-800 border-2 rounded-xl p-2 shadow-xl transition-colors duration-300 ${bagMode === 'sell' ? 'border-red-500 shadow-red-900/20' : bagMode === 'disenchant' ? 'border-cyan-500 shadow-cyan-900/20' : 'border-slate-700'}`}>
               <div className="flex justify-between items-center mb-1 px-1">
-                  <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Bag</h3>
-                  <span className="text-[10px] text-slate-600">{bagItems.length}/24</span>
+                  <div className="flex items-center gap-2">
+                      <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Bag</h3>
+                      
+                      {/* Sell Toggle */}
+                      <button 
+                        onClick={() => setBagMode(prev => prev === 'sell' ? 'equip' : 'sell')}
+                        className={`text-[9px] px-2 py-0.5 rounded-full font-bold border transition-all ${
+                            bagMode === 'sell'
+                            ? 'bg-red-600 text-white border-red-400 animate-pulse' 
+                            : 'bg-slate-700 text-slate-400 border-slate-600 hover:bg-slate-600'
+                        }`}
+                      >
+                          Sell
+                      </button>
+
+                      {/* Disenchant Toggle */}
+                       <button 
+                        onClick={() => setBagMode(prev => prev === 'disenchant' ? 'equip' : 'disenchant')}
+                        className={`text-[9px] px-2 py-0.5 rounded-full font-bold border transition-all ${
+                            bagMode === 'disenchant'
+                            ? 'bg-cyan-600 text-white border-cyan-400 animate-pulse' 
+                            : 'bg-slate-700 text-slate-400 border-slate-600 hover:bg-slate-600'
+                        }`}
+                      >
+                          Dust
+                      </button>
+                  </div>
+                  <span className="text-[10px] text-slate-600">{bagItemsDisplay.length}/24</span>
               </div>
               <div className="grid grid-cols-8 gap-1">
                 {Array.from({ length: 24 }).map((_, i) => (
-                    <BagSlot key={i} index={i} item={bagItems[i]} />
+                    <BagSlot 
+                        key={i} 
+                        index={i} 
+                        item={bagItemsDisplay[i]} 
+                        activeTooltipId={activeTooltipId}
+                        setActiveTooltipId={setActiveTooltipId}
+                        bagMode={bagMode}
+                    />
                 ))}
               </div>
           </div>

@@ -1,6 +1,5 @@
 
 
-
 import type { Equipment, Stats, GearSlot, Rarity, WeaponType } from '../types';
 
 type ItemTemplate = Omit<Equipment, 'name' | 'stats' | 'rarity' | 'itemLevel'> & {
@@ -49,7 +48,7 @@ export const ITEM_TEMPLATES: Record<GearSlot, ItemTemplate[]> = {
         
         { name: 'Mace', slot: 'MainHand', icon: `${ICON_BASE}/flanged-mace.svg${COLOR_PARAM}`, weaponType: 'Mace', possibleStats: ['int', 'str', 'blockChance'] },
         { name: 'Morningstar', slot: 'MainHand', icon: `${ICON_BASE}/flanged-mace.svg${COLOR_PARAM}`, weaponType: 'Mace', possibleStats: ['int', 'defense', 'lifesteal'] },
-        { name: 'War Scepter', slot: 'MainHand', icon: `${ICON_BASE}/sceptre.svg${COLOR_PARAM}`, weaponType: 'Mace', possibleStats: ['int', 'maxHp', 'lifesteal'] },
+        { name: 'War Scepter', slot: 'MainHand', icon: `${ICON_BASE}/sceptre-of-power.svg${COLOR_PARAM}`, weaponType: 'Mace', possibleStats: ['int', 'maxHp', 'lifesteal'] },
         { name: 'Flanged Mace', slot: 'MainHand', icon: `${ICON_BASE}/flanged-mace.svg${COLOR_PARAM}`, weaponType: 'Mace', possibleStats: ['str', 'blockChance', 'int'] },
         { name: 'Holy Mace', slot: 'MainHand', icon: `${ICON_BASE}/flanged-mace.svg${COLOR_PARAM}`, weaponType: 'Mace', possibleStats: ['int', 'maxHp', 'defense'] },
     ],

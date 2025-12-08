@@ -88,8 +88,6 @@ export function generateLoot(floor: number, playerLevel: number): {
     const baseBudget = 3 + itemLevel; 
     
     // 2. Apply Rarity Multiplier to the budget
-    // This ensures Better Rarity always has more stats if Item Level is equal.
-    // It also allows High Level Common items to eventually outscale Low Level Rares.
     const rarityMultiplier = RARITY_MULTIPLIERS[rarity];
     const statPointsBudget = Math.floor(baseBudget * rarityMultiplier);
     
@@ -129,12 +127,24 @@ export function generateLoot(floor: number, playerLevel: number): {
         newStats[statKey] = Math.max(1, Math.round(newStats[statKey]!));
     });
 
+    // --- Calculate Cost (Value) ---
+    // Similar logic to shop, but maybe slightly lower for drops? Keeping consistency for now.
+    const itemPower = statPointsBudget * 5; 
+    let costMultiplier = 1;
+    if (rarity === 'Uncommon') costMultiplier = 1.2;
+    if (rarity === 'Rare') costMultiplier = 1.5;
+    if (rarity === 'Epic') costMultiplier = 2.0;
+    if (rarity === 'Legendary') costMultiplier = 3.0;
+
+    const cost = Math.floor(itemPower * 5 * costMultiplier);
+
     equipment = {
         ...template,
         name,
         stats: newStats,
         rarity,
-        itemLevel
+        itemLevel,
+        cost: Math.round(cost / 10) * 10,
     };
   }
 

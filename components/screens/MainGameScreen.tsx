@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import type { Player, EquipmentSlot, Equipment, Stats, GearSlot } from '../../types';
 import { RARITY_COLORS } from '../../data/items';
@@ -113,7 +114,7 @@ const EquipmentSlotDisplay: React.FC<{
         if (item && isActive) {
             const rarityColor = RARITY_COLORS[item.rarity || 'Common'];
             return (
-                <div className={`absolute ${tooltipPositionClass} w-32 md:w-40 whitespace-normal break-words bg-slate-950 opacity-100 border border-[#D6721C] rounded-md shadow-xl p-2 text-xs z-[9999] pointer-events-none`}>
+                <div className={`absolute ${tooltipPositionClass} w-32 md:w-40 whitespace-normal break-words bg-slate-900 border-2 border-[#D6721C] rounded-lg shadow-2xl shadow-black p-2 text-xs z-[9999] pointer-events-none`}>
                     <div className="flex justify-between items-start gap-2 mb-1">
                         <p className={`font-bold ${rarityColor} leading-tight text-left`}>{item.name}</p>
                         <p className="text-slate-500 text-[9px] flex-shrink-0 pt-0.5">iLvl {item.itemLevel}</p>
@@ -152,7 +153,7 @@ const EquipmentSlotDisplay: React.FC<{
 
     return (
         <div 
-            className="relative group w-full h-full flex items-center justify-center hover:z-[100]"
+            className={`relative group w-full h-full flex items-center justify-center hover:z-[100] ${isActive ? 'z-[100]' : ''}`}
             {...eventHandlers}
             onContextMenu={(e) => e.preventDefault()} // Disable right click menu
         >
@@ -229,11 +230,13 @@ const BagSlot: React.FC<{
         }
     }
 
+    const activeClass = isActive ? 'z-[100]' : '';
+
     return (
         <div 
             {...eventHandlers}
             onContextMenu={(e) => e.preventDefault()}
-            className={`aspect-square rounded-md border flex items-center justify-center relative transition-colors duration-200 hover:z-[100] ${slotClass}`}
+            className={`aspect-square rounded-md border flex items-center justify-center relative transition-colors duration-200 hover:z-[100] ${activeClass} ${slotClass}`}
         >
             {item && (
                 <>
@@ -262,7 +265,7 @@ const BagSlot: React.FC<{
                     
                     {/* Tooltip */}
                     {isActive && (
-                        <div className={`absolute ${tooltipPosition} w-32 md:w-40 whitespace-normal break-words bg-slate-950 opacity-100 border border-[#D6721C] rounded-md shadow-xl p-2 text-xs z-[9999] pointer-events-none text-left`}>
+                        <div className={`absolute ${tooltipPosition} w-32 md:w-40 whitespace-normal break-words bg-slate-900 border-2 border-[#D6721C] rounded-lg shadow-2xl shadow-black p-2 text-xs z-[9999] pointer-events-none text-left`}>
                             <div className="flex justify-between items-baseline mb-1">
                                 <p className={`font-bold ${item.rarityColor || 'text-[#D6721C]'} leading-tight`}>{item.name}</p>
                                 {item.itemLevel && <span className="text-[9px] text-slate-500 ml-2">iLvl {item.itemLevel}</span>}
@@ -395,7 +398,7 @@ const MainGameScreen: React.FC<MainGameScreenProps> = ({ player, onExitToProfile
   }, []);
   
   return (
-    <div className="h-full w-full overflow-hidden flex flex-col items-center p-3 max-w-md md:max-w-2xl mx-auto relative animate-fadeIn gap-2 select-none">
+    <div className="h-full w-full flex flex-col items-center p-3 max-w-md md:max-w-2xl mx-auto relative animate-fadeIn gap-2 select-none">
       
       {/* Options Menu Modal */}
       {showOptions && (
@@ -463,7 +466,7 @@ const MainGameScreen: React.FC<MainGameScreenProps> = ({ player, onExitToProfile
       {/* MIDDLE: Inventory & Stats - Force height constraints for tablet */}
       <div className="flex-1 w-full min-h-0 flex gap-2">
         {/* Left Pane: Inventory (Paper Doll) */}
-        <div className="flex-[1.5] relative bg-slate-800 border border-slate-700 rounded-xl shadow-xl p-2 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-slate-700 to-slate-900 overflow-hidden">
+        <div className="flex-[1.5] relative bg-slate-800 border border-slate-700 rounded-xl shadow-xl p-2 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-slate-700 to-slate-900">
              
              <div className="absolute top-2 left-2 z-0">
                 <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Inventory</h3>
@@ -491,7 +494,7 @@ const MainGameScreen: React.FC<MainGameScreenProps> = ({ player, onExitToProfile
                 </div>
 
                 {/* Left Column: Armor Stack */}
-                <div className="absolute top-14 left-1 z-10 flex flex-col gap-1.5">
+                <div className="absolute top-14 left-1 flex flex-col gap-1.5">
                     {(['Helmet', 'Armor', 'Gloves', 'Boots'] as GearSlot[]).map(slot => (
                         <EquipmentSlotDisplay 
                             key={slot} 
@@ -505,7 +508,7 @@ const MainGameScreen: React.FC<MainGameScreenProps> = ({ player, onExitToProfile
                 </div>
 
                 {/* Right Column: Accessories Stack */}
-                <div className="absolute top-14 right-1 z-10 flex flex-col gap-1.5">
+                <div className="absolute top-14 right-1 flex flex-col gap-1.5">
                     {(['Necklace', 'Earring', 'Ring', 'Belt'] as GearSlot[]).map(slot => (
                         <EquipmentSlotDisplay 
                             key={slot} 
@@ -518,8 +521,8 @@ const MainGameScreen: React.FC<MainGameScreenProps> = ({ player, onExitToProfile
                     ))}
                 </div>
 
-                {/* Bottom Row (Weapons) - Moved up by ~5px (bottom-6 is 24px, now bottom-[29px]) */}
-                <div className="absolute bottom-[29px] right-[52%] z-10">
+                {/* Bottom Row (Weapons) */}
+                <div className="absolute bottom-[29px] right-[52%]">
                     <EquipmentSlotDisplay 
                         slot="MainHand" 
                         item={player.equipment.MainHand} 
@@ -528,7 +531,7 @@ const MainGameScreen: React.FC<MainGameScreenProps> = ({ player, onExitToProfile
                         setActiveTooltipSlot={setActiveEquipTooltipSlot}
                     />
                 </div>
-                <div className="absolute bottom-[29px] left-[52%] z-10">
+                <div className="absolute bottom-[29px] left-[52%]">
                     <EquipmentSlotDisplay 
                         slot="OffHand" 
                         item={isTwoHandedEquipped ? mainHandItem : player.equipment.OffHand} 

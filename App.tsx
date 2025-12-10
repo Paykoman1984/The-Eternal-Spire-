@@ -1,8 +1,4 @@
 
-
-
-
-
 import React, { useState, useCallback, useEffect } from 'react';
 import type { GameScreen, Player, PlayerClass, RunState, CombatLog, Equipment, GearSlot, Achievement, Rarity } from './types';
 import { generateEnemy } from './utils/combat';
@@ -31,6 +27,7 @@ const COLOR_PARAM = "?color=%23e2e8f0";
 const App: React.FC = () => {
   const [gameScreen, setGameScreen] = useState<GameScreen>('start');
   const [isPortrait, setIsPortrait] = useState(true);
+  const [checkpointAlert, setCheckpointAlert] = useState<number | null>(null);
 
   // Portrait Mode Check - Rebuilt to be robust against keyboard flicker
   useEffect(() => {
@@ -427,9 +424,14 @@ const App: React.FC = () => {
     const activePlayer = activeProfileIndex !== null ? profiles[activeProfileIndex] : null;
     if (!activePlayer) return;
 
-    const initialEnemy = generateEnemy(1, activePlayer.level);
+    // Checkpoint Calculation
+    // Logic: Floor 1-10 -> Start 1. Floor 11-20 -> Start 11. Floor 21-30 -> Start 21.
+    const maxFloor = activePlayer.maxFloorReached || 0;
+    const checkpointFloor = Math.max(1, Math.floor((maxFloor - 1) / 10) * 10 + 1);
+
+    const initialEnemy = generateEnemy(checkpointFloor, activePlayer.level);
     setRunState({
-      floor: 1,
+      floor: checkpointFloor,
       runLevel: 1,
       runXp: 0,
       runXpToNextLevel: 50,
@@ -440,7 +442,12 @@ const App: React.FC = () => {
       shardsEarned: 0,
     });
     setCombatLogs([]);
-    addLog(`You enter the Spire. A ${initialEnemy.name} appears!`, 'text-slate-200');
+
+    const introText = checkpointFloor > 1 
+        ? `You use the Waystone to warp to Floor ${checkpointFloor}.`
+        : `You enter the Spire.`;
+
+    addLog(`${introText} A ${initialEnemy.name} appears!`, 'text-slate-200');
     setGameScreen('combat');
   }, [activeProfileIndex, profiles]);
 
@@ -454,6 +461,14 @@ const App: React.FC = () => {
         newPlayer = updateAchievementProgress(newPlayer, null, 'reach_floor', targetFloor);
         return newPlayer;
     });
+
+    // Checkpoint Alert Logic
+    // If targetFloor is 11, 21, 31, etc., it means we just beat a boss (e.g., Floor 10) and unlocked the checkpoint.
+    if (targetFloor > 1 && (targetFloor - 1) % 10 === 0) {
+        setCheckpointAlert(targetFloor);
+        setTimeout(() => setCheckpointAlert(null), 3500); // Show for 3.5 seconds
+        addLog(`Checkpoint Secured! You will now start runs at Floor ${targetFloor}.`, 'text-yellow-400');
+    }
 
     // 2. Generate Next Enemy
     const nextEnemy = generateEnemy(targetFloor, currentPlayerLevel);
@@ -475,10 +490,15 @@ const App: React.FC = () => {
     const activePlayer = activeProfileIndex !== null ? profiles[activeProfileIndex] : null;
     if (!activePlayer || !runState || runState.pendingLoot) return;
   
+    // Fix: Correctly structure the new state without circular nesting of stats
     let newRunState = { 
         ...runState, 
-        currentEnemy: { ...runState.currentEnemy, stats: { ...runState.currentEnemy.stats } } 
+        currentEnemy: { 
+            ...runState.currentEnemy, 
+            stats: { ...runState.currentEnemy.stats } 
+        } 
     };
+    
     let logs: { message: string, color: CombatLog['color'] }[] = [];
     let playerDefeated = false;
     let lootDropped: Equipment | null = null;
@@ -1108,7 +1128,16 @@ const App: React.FC = () => {
   };
 
   return (
-      <div className="h-screen w-screen bg-transparent text-slate-200 font-serif no-scrollbar overflow-hidden">
+      <div className="h-screen w-screen bg-transparent text-slate-200 font-serif no-scrollbar overflow-hidden relative">
+           {checkpointAlert && (
+            <div className="absolute top-[20%] left-0 right-0 z-50 flex items-center justify-center pointer-events-none">
+                <div className="bg-slate-900/95 border border-[#D6721C] px-6 py-2 rounded-xl shadow-lg backdrop-blur-sm animate-bounce">
+                    <p className="text-[#D6721C] font-bold text-sm uppercase tracking-widest text-center">
+                        Checkpoint Reached: Floor {checkpointAlert}
+                    </p>
+                </div>
+            </div>
+          )}
           {renderScreen()}
       </div>
   );

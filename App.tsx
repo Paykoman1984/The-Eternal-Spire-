@@ -146,7 +146,6 @@ const App: React.FC = () => {
                             const fixIcon = (item: Equipment) => {
                                 // 1. URL-based generic fixes (for items with broken filenames)
                                 if (item.icon) {
-                                    if (item.icon.includes('scepter') || item.icon.includes('sceptre.svg')) item.icon = `${ICON_BASE}/sceptre-of-power.svg${COLOR_PARAM}`; // Fix Broken Sceptre Icon
                                     if (item.icon.includes('morning-star')) item.icon = `${ICON_BASE}/flanged-mace.svg${COLOR_PARAM}`;
                                     
                                     if (item.icon.includes('bastard-sword') || item.icon.includes('great-sword') || item.icon.includes('falchion') || item.icon.includes('gladius')) item.icon = `${ICON_BASE}/broadsword.svg${COLOR_PARAM}`;
@@ -182,6 +181,16 @@ const App: React.FC = () => {
                                     if (item.icon.includes('sash')) item.icon = `${ICON_BASE}/belt-buckles.svg${COLOR_PARAM}`;
                                     if (item.icon.includes('belt.svg')) item.icon = `${ICON_BASE}/belt-buckles.svg${COLOR_PARAM}`;
                                 }
+                                
+                                // Consolidated Scepter/Sceptre Fix
+                                // Matches any existing icon with 'scepter'/'sceptre' OR any item named 'Scepter'/'Sceptre'
+                                if (
+                                    item.icon.includes('scepter') || 
+                                    item.icon.includes('sceptre') || 
+                                    (item.name && (item.name.includes('Scepter') || item.name.includes('Sceptre')))
+                                ) {
+                                    item.icon = `${ICON_BASE}/sceptre-of-power.svg${COLOR_PARAM}`;
+                                }
 
                                 // 2. Name-based Specific Overrides (Stronger than generic URL checks)
                                 if (item.name) {
@@ -189,7 +198,6 @@ const App: React.FC = () => {
                                     if (item.name.includes('Tower Shield')) item.icon = `${ICON_BASE}/shield.svg${COLOR_PARAM}`;
                                     if (item.name.includes('Longbow')) item.icon = `${ICON_BASE}/bow-arrow.svg${COLOR_PARAM}`;
                                     if (item.name.includes('Iron Shield')) item.icon = `${ICON_BASE}/shield.svg${COLOR_PARAM}`;
-                                    if (item.name.includes('Scepter')) item.icon = `${ICON_BASE}/sceptre-of-power.svg${COLOR_PARAM}`; // Specific Fix
                                     if (item.name.includes('Greatsword') || item.name.includes('Zweihander')) item.icon = `${ICON_BASE}/two-handed-sword.svg${COLOR_PARAM}`;
                                     
                                     if (item.name.includes('Sash') || item.name.includes('Girdle')) item.icon = `${ICON_BASE}/belt-buckles.svg${COLOR_PARAM}`;

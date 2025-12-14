@@ -440,6 +440,7 @@ const App: React.FC = () => {
       pendingLoot: null,
       enemiesKilled: 0,
       shardsEarned: 0,
+      isAutoBattling: false, // Default to false
     });
     setCombatLogs([]);
 
@@ -482,6 +483,7 @@ const App: React.FC = () => {
             floor: targetFloor,
             currentEnemy: nextEnemy,
             pendingLoot: null,
+            isAutoBattling: false, // Reset auto combat on new floor
         };
     });
   }, [updateCurrentPlayer, updateAchievementProgress]);
@@ -655,6 +657,27 @@ const App: React.FC = () => {
       setTimeout(() => setGameScreen('run_summary'), 2000);
     }
   }, [activeProfileIndex, profiles, runState, advanceToNextFloor, updateAchievementProgress, updateCurrentPlayer, handleAccountLevelUp]);
+
+  // Auto Combat Loop
+  useEffect(() => {
+    if (!runState || !runState.isAutoBattling) return;
+
+    // Stop conditions for auto-battle
+    if (runState.pendingLoot || runState.currentEnemy.stats.hp <= 0 || runState.playerCurrentHpInRun <= 0) {
+        setRunState(prev => prev ? ({ ...prev, isAutoBattling: false }) : null);
+        return;
+    }
+
+    const timer = setTimeout(() => {
+        handleAttack();
+    }, 1000); // 1 second turn delay
+
+    return () => clearTimeout(timer);
+  }, [runState, handleAttack]);
+
+  const handleToggleAutoCombat = useCallback(() => {
+      setRunState(prev => prev ? ({ ...prev, isAutoBattling: !prev.isAutoBattling }) : null);
+  }, []);
 
   const handleLootDecision = useCallback((action: 'take' | 'sell' | 'equip') => {
     if (!runState || !runState.pendingLoot) return;
@@ -974,7 +997,8 @@ const App: React.FC = () => {
         fleePenalty: {
             xpLost,
             shardsLost
-        }
+        },
+        isAutoBattling: false // Stop auto battle on flee
     }) : null);
 
     setGameScreen('run_summary');
@@ -1099,7 +1123,15 @@ const App: React.FC = () => {
         return null; 
       case 'combat':
         if (activePlayer && runState) {
-          return <CombatScreen player={activePlayer} runState={runState} logs={combatLogs} onAttack={handleAttack} onFlee={handleFlee} onLootAction={handleLootDecision} onUsePotion={handleUsePotion} />;
+          return <CombatScreen 
+            player={activePlayer} 
+            runState={runState} 
+            logs={combatLogs} 
+            onToggleAutoCombat={handleToggleAutoCombat} // Use toggle instead of attack
+            onFlee={handleFlee} 
+            onLootAction={handleLootDecision} 
+            onUsePotion={handleUsePotion} 
+          />;
         }
         return null;
       case 'run_summary':

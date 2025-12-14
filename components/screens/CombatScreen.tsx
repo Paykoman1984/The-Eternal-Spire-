@@ -7,7 +7,7 @@ interface CombatScreenProps {
   player: Player;
   runState: RunState;
   logs: CombatLog[];
-  onAttack: () => void;
+  onToggleAutoCombat: () => void;
   onFlee: () => void;
   onLootAction: (action: 'take' | 'sell' | 'equip') => void;
   onUsePotion: () => void;
@@ -194,9 +194,8 @@ const LootDecision: React.FC<{
 };
 
 
-const CombatScreen: React.FC<CombatScreenProps> = ({ player, runState, logs, onAttack, onFlee, onLootAction, onUsePotion }) => {
+const CombatScreen: React.FC<CombatScreenProps> = ({ player, runState, logs, onToggleAutoCombat, onFlee, onLootAction, onUsePotion }) => {
   const logContainerRef = useRef<HTMLDivElement>(null);
-  const lastAttackTime = useRef(0);
 
   const playerDead = runState.playerCurrentHpInRun <= 0;
   const isLootPending = runState.pendingLoot !== null;
@@ -204,19 +203,13 @@ const CombatScreen: React.FC<CombatScreenProps> = ({ player, runState, logs, onA
   const isPostCombatPhase = isLootPending || enemyDefeated;
   
   const currentlyEquipped = runState.pendingLoot ? (player.equipment[runState.pendingLoot.slot] ?? null) : null;
+  const isAuto = runState.isAutoBattling;
 
   useEffect(() => {
     if (logContainerRef.current) {
       logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight;
     }
   }, [logs]);
-
-  const handleAttackClick = () => {
-    const now = Date.now();
-    if (now - lastAttackTime.current < 300 || isPostCombatPhase) return;
-    lastAttackTime.current = now;
-    onAttack();
-  };
 
   return (
     <div className="fixed inset-0 flex flex-col justify-center items-center p-4 z-10 animate-fadeIn h-full overflow-hidden select-none">
@@ -316,17 +309,24 @@ const CombatScreen: React.FC<CombatScreenProps> = ({ player, runState, logs, onA
                 &gt; {log.message}
               </p>
             ))}
+            {isAuto && !isPostCombatPhase && !playerDead && (
+                <p className="text-xs text-slate-500 animate-pulse italic">&gt; Auto-battling...</p>
+            )}
           </div>
         </div>
 
         {/* Action Buttons */}
         <div className="grid grid-cols-3 gap-2 flex-shrink-0 mt-auto">
           <button
-            onClick={handleAttackClick}
+            onClick={onToggleAutoCombat}
             disabled={playerDead || isPostCombatPhase}
-            className="w-full px-4 py-2.5 bg-red-700 text-white font-bold text-sm rounded shadow-md hover:bg-red-600 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed"
+            className={`w-full px-4 py-2.5 font-bold text-sm rounded shadow-md transition-all duration-300 focus:outline-none focus:ring-2 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed ${
+                isAuto 
+                ? 'bg-red-900/80 text-red-200 hover:bg-red-800 border border-red-700 focus:ring-red-500' 
+                : 'bg-green-700 text-white hover:bg-green-600 focus:ring-green-500 animate-pulse'
+            }`}
           >
-            Attack
+            {isAuto ? 'Stop' : 'FIGHT!'}
           </button>
           <button
             onClick={onUsePotion}

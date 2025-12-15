@@ -136,8 +136,8 @@ export function generateLoot(floor: number, playerLevel: number): {
 
   // --- Boss Drop Logic (Floor % 10 === 0) ---
   if (floor % 10 === 0) {
-      // Bosses drop 1-3 items guaranteed
-      const dropCount = Math.floor(Math.random() * 3) + 1; // 1, 2, or 3
+      // Bosses drop 2-4 items guaranteed
+      const dropCount = Math.floor(Math.random() * 3) + 2; // 2, 3, or 4
       for (let i = 0; i < dropCount; i++) {
           equipment.push(generateSingleItem(floor));
       }

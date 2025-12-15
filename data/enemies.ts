@@ -36,8 +36,8 @@ export const BASE_ENEMIES: Record<string, EnemyData> = {
     name: 'Skeleton',
     icon: `${ICON_BASE}/skeleton.svg${COLOR_PARAM}`,
     minFloor: 4,
-    stats: { maxHp: 45, attack: 9, defense: 6, evasion: 2 },
-    xpReward: 20
+    stats: { maxHp: 38, attack: 8, defense: 3, evasion: 2 },
+    xpReward: 18
   },
   SPIDER: {
     id: 'SPIDER',
@@ -52,7 +52,7 @@ export const BASE_ENEMIES: Record<string, EnemyData> = {
     name: 'Orc',
     icon: `${ICON_BASE}/orc-head.svg${COLOR_PARAM}`,
     minFloor: 7,
-    stats: { maxHp: 70, attack: 13, defense: 4, evasion: 0 },
+    stats: { maxHp: 55, attack: 10, defense: 2, evasion: 0 },
     xpReward: 30
   },
   WRAITH: {

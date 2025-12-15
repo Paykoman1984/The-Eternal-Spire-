@@ -109,7 +109,7 @@ export interface RunState {
   runXpToNextLevel: number;
   playerCurrentHpInRun: number;
   currentEnemy: Enemy;
-  pendingLoot: Equipment | null;
+  pendingLoot: Equipment[];
   enemiesKilled: number;
   shardsEarned: number;
   isAutoBattling?: boolean; // New Auto Combat Flag
@@ -117,6 +117,7 @@ export interface RunState {
       xpLost: number;
       shardsLost: number;
   };
+  pendingLevelUpHeal?: boolean;
 }
 
 export interface CombatLog {

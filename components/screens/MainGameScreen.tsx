@@ -679,7 +679,7 @@ const MainGameScreen: React.FC<MainGameScreenProps> = ({ player, onExitToProfile
               >
                 Spire
               </button>
-            </div>
+          </div>
       </div>
     </div>
   );

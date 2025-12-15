@@ -1,5 +1,4 @@
 
-
 import type { Equipment, GearSlot, Stats, Rarity } from '../types';
 import { GEAR_SLOTS } from '../constants';
 import { ITEM_TEMPLATES, ITEM_PREFIXES, STAT_WEIGHTS } from '../data/items';
@@ -18,38 +17,7 @@ const RARITY_MULTIPLIERS: Record<Rarity, number> = {
 // A function to get a random item from an array
 const getRandom = <T>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
 
-export function generateLoot(floor: number, playerLevel: number): {
-  shards: number;
-  potions: number;
-  equipment: Equipment | null;
-} {
-  let shards = 0;
-  let potions = 0;
-  let equipment: Equipment | null = null;
-
-  // Roll for shards
-  if (Math.random() < SHARD_DROP_CHANCE) {
-    shards = Math.floor(Math.random() * 10 * (1 + floor / 5)) + 5;
-  }
-
-  // Roll for potions
-  if (Math.random() < POTION_DROP_CHANCE) {
-    potions = 1;
-  }
-
-  // --- Dynamic Drop Rate Calculation ---
-  const baseDropChance = 0.25;
-  const decayPerLevel = 0.005;
-  const minDropChance = 0.05;
-  
-  let equipmentDropChance = Math.max(minDropChance, baseDropChance - (playerLevel * decayPerLevel));
-  
-  // Slight boost to drop rate for Boss floors
-  if (floor % 10 === 0) equipmentDropChance += 0.2;
-
-
-  // Roll for equipment
-  if (Math.random() < equipmentDropChance) {
+function generateSingleItem(floor: number): Equipment {
     const slot = getRandom(GEAR_SLOTS);
     const template = getRandom(ITEM_TEMPLATES[slot]);
     
@@ -128,7 +96,6 @@ export function generateLoot(floor: number, playerLevel: number): {
     });
 
     // --- Calculate Cost (Value) ---
-    // Similar logic to shop, but maybe slightly lower for drops? Keeping consistency for now.
     const itemPower = statPointsBudget * 5; 
     let costMultiplier = 1;
     if (rarity === 'Uncommon') costMultiplier = 1.2;
@@ -138,7 +105,7 @@ export function generateLoot(floor: number, playerLevel: number): {
 
     const cost = Math.floor(itemPower * 5 * costMultiplier);
 
-    equipment = {
+    return {
         ...template,
         name,
         stats: newStats,
@@ -146,6 +113,46 @@ export function generateLoot(floor: number, playerLevel: number): {
         itemLevel,
         cost: Math.round(cost / 10) * 10,
     };
+}
+
+export function generateLoot(floor: number, playerLevel: number): {
+  shards: number;
+  potions: number;
+  equipment: Equipment[];
+} {
+  let shards = 0;
+  let potions = 0;
+  let equipment: Equipment[] = [];
+
+  // Roll for shards
+  if (Math.random() < SHARD_DROP_CHANCE) {
+    shards = Math.floor(Math.random() * 10 * (1 + floor / 5)) + 5;
+  }
+
+  // Roll for potions
+  if (Math.random() < POTION_DROP_CHANCE) {
+    potions = 1;
+  }
+
+  // --- Boss Drop Logic (Floor % 10 === 0) ---
+  if (floor % 10 === 0) {
+      // Bosses drop 1-3 items guaranteed
+      const dropCount = Math.floor(Math.random() * 3) + 1; // 1, 2, or 3
+      for (let i = 0; i < dropCount; i++) {
+          equipment.push(generateSingleItem(floor));
+      }
+  } else {
+      // --- Standard Drop Logic ---
+      const baseDropChance = 0.25;
+      const decayPerLevel = 0.005;
+      const minDropChance = 0.05;
+      
+      const equipmentDropChance = Math.max(minDropChance, baseDropChance - (playerLevel * decayPerLevel));
+      
+      // Roll for equipment
+      if (Math.random() < equipmentDropChance) {
+        equipment.push(generateSingleItem(floor));
+      }
   }
 
   return { shards, potions, equipment };

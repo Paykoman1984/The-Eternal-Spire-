@@ -25,14 +25,15 @@ const HealthBar: React.FC<{ current: number; max: number; label?: string; showLa
             <span className="text-xs">{current}/{max}</span>
           </div>
       )}
-      <div className="w-full bg-slate-900 rounded-full h-2.5 border border-slate-700 overflow-hidden relative">
+      {/* Increased height to h-4 (16px) */}
+      <div className="w-full bg-slate-900 rounded-full h-4 border border-slate-700 overflow-hidden relative shadow-inner">
         <div
           className={`h-full transition-all duration-300 ${percentage > 50 ? 'bg-green-600' : percentage > 25 ? 'bg-[#D6721C]' : 'bg-red-600'}`}
           style={{ width: `${percentage}%` }}
         ></div>
         {!showLabel && (
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                 <span className="text-[8px] font-bold text-white drop-shadow-md leading-none">{current}/{max}</span>
+                 <span className="text-[10px] font-bold text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)] leading-none mt-[1px]">{current}/{max}</span>
             </div>
         )}
       </div>
@@ -112,33 +113,36 @@ const LootDecision: React.FC<{
     player: Player;
     newItem: Equipment;
     oldItem: Equipment | null;
+    itemsRemaining: number;
     onLootAction: (action: 'take' | 'sell' | 'equip') => void;
-}> = ({ player, newItem, oldItem, onLootAction }) => {
+}> = ({ player, newItem, oldItem, itemsRemaining, onLootAction }) => {
     const allStats = Array.from(new Set([...Object.keys(newItem.stats), ...Object.keys(oldItem?.stats ?? {})])) as (keyof Stats)[];
     
-    // Calculate sell value (20% of cost)
     const sellValue = Math.floor((newItem.cost || 10) * 0.2);
-    
-    // Check Bag Space
     const occupiedCount = player.inventory.length + (player.potionCount > 0 ? 1 : 0);
     const isBagFull = occupiedCount >= 24;
     
-    // Equip Validations
     const canEquipClass = !newItem.weaponType || player.classInfo.allowedWeaponTypes.includes(newItem.weaponType);
-    
     let canEquipOffHand = true;
     if (newItem.slot === 'OffHand') {
         const mainHand = player.equipment.MainHand;
         if (!mainHand || mainHand.isTwoHanded) canEquipOffHand = false;
     }
-    
     const canSwap = !oldItem || !isBagFull; 
     const canEquip = canEquipClass && canEquipOffHand && canSwap;
 
     return (
         <div className="absolute inset-0 bg-slate-900/90 z-50 flex items-center justify-center animate-fadeIn p-4">
             <div className="bg-slate-800 border-2 border-[#D6721C] rounded-xl p-3 max-w-sm w-full shadow-2xl">
-                <h3 className="text-base text-center font-bold text-[#D6721C] mb-2">New Item Dropped!</h3>
+                <div className="flex justify-between items-center mb-2 border-b border-slate-700 pb-1">
+                    <h3 className="text-base font-bold text-[#D6721C]">New Item Dropped!</h3>
+                    {itemsRemaining > 1 && (
+                        <span className="text-[10px] text-slate-300 font-bold bg-slate-700 px-2 py-0.5 rounded-full">
+                            +{itemsRemaining - 1} more
+                        </span>
+                    )}
+                </div>
+                
                 <div className="flex gap-2 mb-2">
                     <ItemCard title="Equipped" item={oldItem} />
                     <ItemCard title="New Item" item={newItem} />
@@ -147,7 +151,7 @@ const LootDecision: React.FC<{
                 <div className="bg-slate-900/80 border border-slate-700 rounded-lg p-2 mb-3">
                      <h4 className="text-xs font-bold text-slate-400 border-b border-slate-700 pb-1 mb-1.5">Comparison</h4>
                      {allStats.length > 0 ? allStats.map(stat => {
-                        if (stat === 'itemLevel' as any) return null; // Safe guard
+                        if (stat === 'itemLevel' as any) return null; 
                         return (
                             <StatComparison 
                                 key={stat}
@@ -193,28 +197,115 @@ const LootDecision: React.FC<{
     );
 };
 
+// --- Floating Text Component ---
+interface FloatingTextData {
+    id: number;
+    text: string;
+    color: string;
+}
+
+const FloatingText: React.FC<{ data: FloatingTextData | null }> = ({ data }) => {
+    if (!data) return null;
+    return (
+        <div key={data.id} className={`absolute top-0 left-1/2 -translate-x-1/2 -translate-y-8 pointer-events-none z-20 animate-bounce`}>
+            <span className={`text-sm md:text-base font-extrabold ${data.color} drop-shadow-[0_2px_2px_rgba(0,0,0,0.9)] stroke-black`}>
+                {data.text}
+            </span>
+        </div>
+    );
+};
+
 // --- Main Combat Screen ---
 
 const CombatScreen: React.FC<CombatScreenProps> = ({ player, runState, logs, onToggleAutoCombat, onFlee, onLootAction, onUsePotion }) => {
   const logContainerRef = useRef<HTMLDivElement>(null);
-  const [clashAnimation, setClashAnimation] = useState(false);
+  
+  // Animation States
+  const [showFlash, setShowFlash] = useState(false); // Controls impact visual
+
+  const prevLogLengthRef = useRef(0);
+  
+  // Floating Text States (using object with ID to force re-render on same text)
+  const [playerFloatingText, setPlayerFloatingText] = useState<FloatingTextData | null>(null);
+  const [enemyFloatingText, setEnemyFloatingText] = useState<FloatingTextData | null>(null);
+  
+  // Refs to manage timeouts preventing race conditions clearing text too early
+  const playerTextTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const enemyTextTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const playerDead = runState.playerCurrentHpInRun <= 0;
-  const isLootPending = runState.pendingLoot !== null;
+  
+  // Derived Loot State for Multiple Items
+  const currentLootItem = runState.pendingLoot && runState.pendingLoot.length > 0 ? runState.pendingLoot[0] : null;
+  const isLootPending = currentLootItem !== null;
+  const itemsRemaining = runState.pendingLoot.length;
+
   const enemyDefeated = runState.currentEnemy.stats.hp <= 0;
   const isPostCombatPhase = isLootPending || enemyDefeated;
   
-  const currentlyEquipped = runState.pendingLoot ? (player.equipment[runState.pendingLoot.slot] ?? null) : null;
+  const currentlyEquipped = currentLootItem ? (player.equipment[currentLootItem.slot] ?? null) : null;
   const isAuto = runState.isAutoBattling;
 
-  // Trigger sword animation on new log entry (implying an action happened)
+  // Trigger sword animation and floating text on new log entry
   useEffect(() => {
-    if (logs.length > 0 && !isPostCombatPhase) {
-        setClashAnimation(true);
-        const timer = setTimeout(() => setClashAnimation(false), 200);
-        return () => clearTimeout(timer);
+    // Reset ref if logs are cleared (new fight)
+    if (logs.length === 0) {
+        prevLogLengthRef.current = 0;
+        return;
     }
-  }, [logs, isPostCombatPhase]);
+
+    if (logs.length > prevLogLengthRef.current) {
+        const newLogs = logs.slice(prevLogLengthRef.current);
+        
+        // Only trigger flash if actual combat events occurred
+        const isCombatEvent = newLogs.some(log => 
+            log.message.includes("hit") || 
+            log.message.includes("dodged") || 
+            log.message.includes("BLOCKED") ||
+            log.message.includes("damage") ||
+            log.message.includes("defeated")
+        );
+
+        if (isCombatEvent) {
+             setShowFlash(true);
+             const cleanupTimer = setTimeout(() => {
+                setShowFlash(false);
+            }, 100); // Shorter duration for impact
+        }
+
+        // Analyze new logs for floating text
+        newLogs.forEach((log, index) => {
+            const id = Date.now() + index; // Unique ID per event
+            
+            // Player Events (Defensive)
+            if (log.message.includes("You dodged")) {
+                if (playerTextTimeoutRef.current) clearTimeout(playerTextTimeoutRef.current);
+                setPlayerFloatingText({ id, text: "DODGE!", color: "text-blue-400" });
+                playerTextTimeoutRef.current = setTimeout(() => setPlayerFloatingText(null), 1000);
+            }
+            if (log.message.includes("You BLOCKED")) {
+                if (playerTextTimeoutRef.current) clearTimeout(playerTextTimeoutRef.current);
+                setPlayerFloatingText({ id, text: "BLOCK!", color: "text-cyan-400" });
+                playerTextTimeoutRef.current = setTimeout(() => setPlayerFloatingText(null), 1000);
+            }
+
+            // Enemy Events (Offensive) - "You hit the [Enemy] ... (CRIT!)"
+            if (log.message.includes("(CRIT!)")) {
+                if (enemyTextTimeoutRef.current) clearTimeout(enemyTextTimeoutRef.current);
+                setEnemyFloatingText({ id, text: "CRIT!", color: "text-red-500 text-xl md:text-2xl" });
+                enemyTextTimeoutRef.current = setTimeout(() => setEnemyFloatingText(null), 1000);
+            }
+            // Enemy Dodge - "The [Enemy] dodged"
+            if (log.message.includes("dodged your attack")) {
+                if (enemyTextTimeoutRef.current) clearTimeout(enemyTextTimeoutRef.current);
+                setEnemyFloatingText({ id, text: "DODGE!", color: "text-blue-400" });
+                enemyTextTimeoutRef.current = setTimeout(() => setEnemyFloatingText(null), 1000);
+            }
+        });
+
+        prevLogLengthRef.current = logs.length;
+    }
+  }, [logs]); 
 
   useEffect(() => {
     if (logContainerRef.current) {
@@ -225,11 +316,12 @@ const CombatScreen: React.FC<CombatScreenProps> = ({ player, runState, logs, onT
   return (
     <div className="fixed inset-0 flex flex-col justify-center items-center p-4 z-10 animate-fadeIn h-full overflow-hidden select-none">
       <div className="w-full max-w-3xl h-full flex flex-col gap-2 relative">
-        {isLootPending && runState.pendingLoot && (
+        {isLootPending && currentLootItem && (
            <LootDecision 
               player={player}
-              newItem={runState.pendingLoot}
+              newItem={currentLootItem}
               oldItem={currentlyEquipped}
+              itemsRemaining={itemsRemaining}
               onLootAction={onLootAction}
            />
         )}
@@ -265,7 +357,10 @@ const CombatScreen: React.FC<CombatScreenProps> = ({ player, runState, logs, onT
             <div className="flex items-center justify-between">
                 
                 {/* Left: PLAYER */}
-                <div className="flex flex-col items-center w-24">
+                <div className="flex flex-col items-center w-24 relative">
+                     {/* Floating Text Overlay */}
+                     <FloatingText data={playerFloatingText} />
+                     
                      <div className="w-14 h-14 bg-slate-900/50 border-2 border-slate-600 rounded-lg p-1 mb-2 shadow-md">
                         {player.classInfo.icon.startsWith('http') ? (
                             <img src={player.classInfo.icon} alt={player.classInfo.name} className="w-full h-full object-contain" />
@@ -275,21 +370,25 @@ const CombatScreen: React.FC<CombatScreenProps> = ({ player, runState, logs, onT
                      </div>
                      <span className="text-xs font-bold text-slate-200 mb-1 truncate w-full text-center">{player.name}</span>
                      <HealthBar current={runState.playerCurrentHpInRun} max={player.currentStats.maxHp} showLabel={false} />
-                     <p className="text-[9px] text-slate-400 mt-0.5">{runState.playerCurrentHpInRun}/{player.currentStats.maxHp}</p>
                 </div>
 
                 {/* Center: BATTLE ANIMATION */}
-                <div className="flex-1 flex flex-col items-center justify-center relative h-full">
-                    <div className={`transition-all duration-100 transform ${clashAnimation ? 'scale-125 rotate-12 drop-shadow-[0_0_10px_rgba(214,114,28,0.8)]' : 'scale-100 opacity-80'}`}>
-                         <span className="text-4xl md:text-5xl">⚔️</span>
-                    </div>
-                    {clashAnimation && (
-                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-0.5 bg-white/50 animate-ping"></div>
-                    )}
+                <div className="flex-1 flex items-center justify-center relative h-full w-full">
+                     {/* Fixed Crossed Swords Icon */}
+                     <div className={`z-10 opacity-80 transition-transform duration-100 ${showFlash ? 'scale-125' : 'scale-100'}`}>
+                        <img 
+                            src={`https://api.iconify.design/game-icons/crossed-swords.svg?color=%23e2e8f0`} 
+                            alt="Combat" 
+                            className="w-14 h-14 md:w-20 md:h-20" 
+                        /> 
+                     </div>
                 </div>
 
                 {/* Right: ENEMY */}
-                <div className="flex flex-col items-center w-24">
+                <div className="flex flex-col items-center w-24 relative">
+                     {/* Floating Text Overlay */}
+                     <FloatingText data={enemyFloatingText} />
+
                      <div className="relative w-14 h-14 bg-slate-900/50 border-2 border-red-900/50 rounded-lg p-1 mb-2 shadow-md">
                         {runState.currentEnemy.icon.startsWith('http') ? (
                             <img src={runState.currentEnemy.icon} alt={runState.currentEnemy.name} className="w-full h-full object-contain" />
@@ -305,7 +404,6 @@ const CombatScreen: React.FC<CombatScreenProps> = ({ player, runState, logs, onT
                          {runState.currentEnemy.name}
                      </span>
                      <HealthBar current={runState.currentEnemy.stats.hp} max={runState.currentEnemy.stats.maxHp} showLabel={false} />
-                     <p className="text-[9px] text-slate-400 mt-0.5">{runState.currentEnemy.stats.hp}/{runState.currentEnemy.stats.maxHp}</p>
                 </div>
 
             </div>

@@ -108,7 +108,22 @@ const EquipmentSlotDisplay: React.FC<{
         }
     };
 
-    const longPressEvents = useLongPress(handleLongPress, handleClick, { delay: 400 });
+    const { 
+        onMouseDown, 
+        onTouchStart, 
+        onMouseUp, 
+        onMouseLeave: onLongPressMouseLeave, 
+        onTouchEnd 
+    } = useLongPress(handleLongPress, handleClick, { delay: 400 });
+
+    const handleMouseEnter = () => {
+        if (item) setActiveTooltipSlot(slot);
+    };
+
+    const handleMouseLeave = (e: React.MouseEvent) => {
+        setActiveTooltipSlot(null);
+        if (onLongPressMouseLeave) onLongPressMouseLeave(e);
+    };
 
     const renderTooltip = () => {
         if (item && isActive) {
@@ -148,13 +163,12 @@ const EquipmentSlotDisplay: React.FC<{
             ? `${slotSizeClass} bg-slate-800 border-2 border-slate-600 rounded-lg flex flex-col items-center justify-center p-1 text-center shadow-md cursor-pointer select-none`
             : `${slotSizeClass} bg-slate-900/40 border-2 border-dashed border-slate-700 rounded-lg flex flex-col items-center justify-center p-0.5 text-center hover:border-[#D6721C] hover:bg-slate-800/50 transition-colors duration-300`;
 
-    // Wrap events only if item exists and not ghost
-    const eventHandlers = (item && !isGhost) ? longPressEvents : {};
-
     return (
         <div 
             className={`relative group w-full h-full flex items-center justify-center hover:z-[100] ${isActive ? 'z-[100]' : ''}`}
-            {...eventHandlers}
+            onMouseEnter={item && !isGhost ? handleMouseEnter : undefined}
+            onMouseLeave={item && !isGhost ? handleMouseLeave : undefined}
+            {...(item && !isGhost ? { onMouseDown, onTouchStart, onMouseUp, onTouchEnd } : {})}
             onContextMenu={(e) => e.preventDefault()} // Disable right click menu
         >
             <div className={containerClass}>
@@ -214,8 +228,22 @@ const BagSlot: React.FC<{
         }
     };
 
-    const longPressEvents = useLongPress(handleLongPress, handleClick, { delay: 400 });
-    const eventHandlers = item ? longPressEvents : {};
+    const { 
+        onMouseDown, 
+        onTouchStart, 
+        onMouseUp, 
+        onMouseLeave: onLongPressMouseLeave, 
+        onTouchEnd 
+    } = useLongPress(handleLongPress, handleClick, { delay: 400 });
+
+    const handleMouseEnter = () => {
+        if (item) setActiveTooltipId(item.id);
+    };
+
+    const handleMouseLeave = (e: React.MouseEvent) => {
+        setActiveTooltipId(null);
+        if (onLongPressMouseLeave) onLongPressMouseLeave(e);
+    };
 
     const sellValue = item?.cost ? Math.floor(item.cost * 0.2) : 0;
 
@@ -234,7 +262,9 @@ const BagSlot: React.FC<{
 
     return (
         <div 
-            {...eventHandlers}
+            onMouseEnter={item ? handleMouseEnter : undefined}
+            onMouseLeave={item ? handleMouseLeave : undefined}
+            {...(item ? { onMouseDown, onTouchStart, onMouseUp, onTouchEnd } : {})}
             onContextMenu={(e) => e.preventDefault()}
             className={`aspect-square rounded-md border flex items-center justify-center relative transition-colors duration-200 hover:z-[100] ${activeClass} ${slotClass}`}
         >
@@ -473,7 +503,7 @@ const MainGameScreen: React.FC<MainGameScreenProps> = ({ player, onExitToProfile
              </div>
              
              <div className="absolute top-2 right-2 z-0">
-                <p className="text-[8px] text-slate-600 italic">Hold for Info</p>
+                <p className="text-[8px] text-slate-600 italic">Hold/Hover for Info</p>
              </div>
 
              {/* Centered container to prevent drift on tablet screens */}

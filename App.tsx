@@ -29,47 +29,50 @@ const App: React.FC = () => {
   const [isPortrait, setIsPortrait] = useState(true);
   const [checkpointAlert, setCheckpointAlert] = useState<number | null>(null);
 
-  // Portrait Mode Check - Rebuilt to be robust against keyboard flicker
+  // Portrait Mode Check - Revised to rely on Viewport (matchMedia) instead of Screen API
+  // This fixes the issue where desktop browsers in narrow windows were detected as 'Landscape' 
+  // because the physical monitor is landscape.
   useEffect(() => {
-    // The most reliable method is the Screen Orientation API, as it tracks physical rotation.
-    const screenOrientation = window.screen?.orientation;
-    // The fallback is a CSS media query, which is better than checking dimensions directly.
-    const portraitMediaQuery = window.matchMedia?.("(orientation: portrait)");
-
-    const handleOrientationChange = () => {
-      if (screenOrientation) {
-        setIsPortrait(screenOrientation.type.startsWith("portrait"));
-      } else if (portraitMediaQuery) {
-        setIsPortrait(portraitMediaQuery.matches);
+    const checkOrientation = () => {
+      // Primary check: CSS Media Query (Checks viewport aspect ratio: height >= width)
+      if (window.matchMedia) {
+        const matches = window.matchMedia("(orientation: portrait)").matches;
+        setIsPortrait(matches);
       } else {
-        // Last resort for very old browsers, only checked on initial load.
-        setIsPortrait(window.innerHeight > window.innerWidth);
+        // Fallback: Simple Dimension check
+        setIsPortrait(window.innerHeight >= window.innerWidth);
       }
     };
 
-    // Set the initial state
-    handleOrientationChange();
+    // Initial check
+    checkOrientation();
 
-    // Attach the most reliable listener available
-    if (screenOrientation) {
-      screenOrientation.addEventListener("change", handleOrientationChange);
-    } else if (portraitMediaQuery?.addEventListener) {
-      portraitMediaQuery.addEventListener("change", handleOrientationChange);
+    // Listener for changes
+    if (window.matchMedia) {
+        const mediaQuery = window.matchMedia("(orientation: portrait)");
+        
+        // Modern browsers
+        if (mediaQuery.addEventListener) {
+            mediaQuery.addEventListener("change", checkOrientation);
+        } else if (mediaQuery.addListener) {
+            // Deprecated fallback for older browsers
+            mediaQuery.addListener(checkOrientation);
+        }
+        
+        return () => {
+            if (mediaQuery.removeEventListener) {
+                mediaQuery.removeEventListener("change", checkOrientation);
+            } else if (mediaQuery.removeListener) {
+                mediaQuery.removeListener(checkOrientation);
+            }
+        };
+    } else {
+        // Fallback for very old browsers (IE, etc): use resize event
+        // Note: We try to avoid this on mobile to prevent keyboard flicker, but 
+        // matchMedia covers almost all mobile devices.
+        window.addEventListener('resize', checkOrientation);
+        return () => window.removeEventListener('resize', checkOrientation);
     }
-    // IMPORTANT: We NO LONGER add a 'resize' event listener. The 'resize' event is the
-    // root cause of the flickering bug when the on-screen keyboard appears on Android.
-    // By removing it, we sacrifice dynamic orientation detection on very old browsers
-    // in favor of making the app usable on all modern mobile devices.
-
-    // Cleanup listeners
-    return () => {
-      if (screenOrientation) {
-        screenOrientation.removeEventListener("change", handleOrientationChange);
-      }
-      if (portraitMediaQuery?.removeEventListener) {
-        portraitMediaQuery.removeEventListener("change", handleOrientationChange);
-      }
-    };
   }, []);
 
   // Load profiles from localStorage

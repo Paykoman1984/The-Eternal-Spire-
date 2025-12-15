@@ -1,5 +1,5 @@
 
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import type { Player, RunState, CombatLog, Equipment, Stats } from '../../types';
 import { RARITY_COLORS } from '../../data/items';
 
@@ -13,28 +13,37 @@ interface CombatScreenProps {
   onUsePotion: () => void;
 }
 
-const HealthBar: React.FC<{ current: number; max: number; label: string }> = ({ current, max, label }) => {
+// --- Sub Components ---
+
+const HealthBar: React.FC<{ current: number; max: number; label?: string; showLabel?: boolean }> = ({ current, max, label, showLabel = true }) => {
   const percentage = max > 0 ? (current / max) * 100 : 0;
   return (
-    <div>
-      <div className="flex justify-between items-center text-xs text-slate-300 mb-0.5">
-        <span className="text-[10px]">{label}</span>
-        <span className="text-xs">{current}/{max}</span>
-      </div>
-      <div className="w-full bg-slate-900 rounded-full h-3 border border-slate-700">
+    <div className="w-full">
+      {showLabel && (
+          <div className="flex justify-between items-center text-xs text-slate-300 mb-0.5">
+            <span className="text-[10px]">{label}</span>
+            <span className="text-xs">{current}/{max}</span>
+          </div>
+      )}
+      <div className="w-full bg-slate-900 rounded-full h-2.5 border border-slate-700 overflow-hidden relative">
         <div
-          className={`h-full rounded-full transition-all duration-300 ${percentage > 50 ? 'bg-green-600' : percentage > 25 ? 'bg-[#D6721C]' : 'bg-red-600'}`}
+          className={`h-full transition-all duration-300 ${percentage > 50 ? 'bg-green-600' : percentage > 25 ? 'bg-[#D6721C]' : 'bg-red-600'}`}
           style={{ width: `${percentage}%` }}
         ></div>
+        {!showLabel && (
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                 <span className="text-[8px] font-bold text-white drop-shadow-md leading-none">{current}/{max}</span>
+            </div>
+        )}
       </div>
     </div>
   );
 };
 
 const CombatStatDisplay: React.FC<{ label: string; value: string | number; color?: string }> = ({ label, value, color }) => (
-    <div className="bg-slate-900/50 p-0.5 rounded text-center border border-slate-600">
-        <p className="text-[9px] font-bold text-slate-400 uppercase">{label}</p>
-        <p className={`text-xs font-bold ${color || 'text-slate-200'}`}>{value}</p>
+    <div className="bg-slate-900/50 p-1 rounded text-center border border-slate-600 flex flex-col justify-center items-center">
+        <p className="text-[8px] font-bold text-slate-500 uppercase leading-none mb-0.5">{label}</p>
+        <p className={`text-xs font-bold leading-none ${color || 'text-slate-200'}`}>{value}</p>
     </div>
 );
 
@@ -51,7 +60,6 @@ const StatComparison: React.FC<{ label: string, oldValue: number, newValue: numb
         </div>
     );
 };
-
 
 const ItemCard: React.FC<{ title: string, item: Equipment | null }> = ({ title, item }) => {
     const rarityColor = item ? (RARITY_COLORS[item.rarity || 'Common'] || 'text-[#D6721C]') : 'text-[#D6721C]';
@@ -100,7 +108,6 @@ const ItemCard: React.FC<{ title: string, item: Equipment | null }> = ({ title, 
     );
 };
 
-
 const LootDecision: React.FC<{
     player: Player;
     newItem: Equipment;
@@ -125,11 +132,7 @@ const LootDecision: React.FC<{
         if (!mainHand || mainHand.isTwoHanded) canEquipOffHand = false;
     }
     
-    // Check if swap is possible with bag constraints
-    // If oldItem exists, it must go to bag. If bag is full, swap not allowed.
-    // Exception: If bag is full but we have a potion taking up a slot? No, strict slot count.
     const canSwap = !oldItem || !isBagFull; 
-    
     const canEquip = canEquipClass && canEquipOffHand && canSwap;
 
     return (
@@ -157,9 +160,6 @@ const LootDecision: React.FC<{
                 </div>
                 
                 {isBagFull && canSwap && (
-                     // If canSwap is true (meaning oldItem is null) but bag is full, it's fine.
-                     // Wait, if oldItem is null, we don't need bag space.
-                     // If oldItem exists (canSwap = false), we show error.
                      !canSwap && <p className="text-[10px] text-red-400 font-bold text-center mb-2">Inventory Full! Cannot swap current item.</p>
                 )}
                 {isBagFull && !canSwap && (
@@ -193,9 +193,11 @@ const LootDecision: React.FC<{
     );
 };
 
+// --- Main Combat Screen ---
 
 const CombatScreen: React.FC<CombatScreenProps> = ({ player, runState, logs, onToggleAutoCombat, onFlee, onLootAction, onUsePotion }) => {
   const logContainerRef = useRef<HTMLDivElement>(null);
+  const [clashAnimation, setClashAnimation] = useState(false);
 
   const playerDead = runState.playerCurrentHpInRun <= 0;
   const isLootPending = runState.pendingLoot !== null;
@@ -204,6 +206,15 @@ const CombatScreen: React.FC<CombatScreenProps> = ({ player, runState, logs, onT
   
   const currentlyEquipped = runState.pendingLoot ? (player.equipment[runState.pendingLoot.slot] ?? null) : null;
   const isAuto = runState.isAutoBattling;
+
+  // Trigger sword animation on new log entry (implying an action happened)
+  useEffect(() => {
+    if (logs.length > 0 && !isPostCombatPhase) {
+        setClashAnimation(true);
+        const timer = setTimeout(() => setClashAnimation(false), 200);
+        return () => clearTimeout(timer);
+    }
+  }, [logs, isPostCombatPhase]);
 
   useEffect(() => {
     if (logContainerRef.current) {
@@ -223,7 +234,7 @@ const CombatScreen: React.FC<CombatScreenProps> = ({ player, runState, logs, onT
            />
         )}
         
-        {/* Header Information */}
+        {/* 1. HEADER (Intact) */}
         <div className="bg-slate-800 border border-slate-700 rounded-xl p-2 shadow-lg text-center flex-shrink-0">
           <h2 className="text-base font-bold text-[#D6721C]">Floor {runState.floor}</h2>
           <div className="flex justify-center gap-3 text-xs text-slate-400">
@@ -233,74 +244,74 @@ const CombatScreen: React.FC<CombatScreenProps> = ({ player, runState, logs, onT
           </div>
         </div>
 
-        {/* Combat Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 flex-shrink-0">
-          <div className="bg-slate-800 border border-slate-700 rounded-xl p-2 shadow-lg">
-            <div className="flex items-center mb-1.5">
-              <div className="w-8 h-8 mr-2">
-                 {player.classInfo.icon.startsWith('http') ? (
-                    <img src={player.classInfo.icon} alt={player.classInfo.name} className="w-full h-full object-contain" />
-                ) : (
-                    <span className="text-2xl">{player.classInfo.icon}</span>
-                )}
-              </div>
-              <h3 className="text-sm font-bold text-slate-200">{player.name}</h3>
+        {/* 2. PLAYER STATS PANEL */}
+        <div className="bg-slate-800 border border-slate-700 rounded-xl p-2 shadow-lg flex-shrink-0">
+            <h3 className="text-xs font-bold text-[#D6721C] border-b border-slate-700 pb-1 mb-2 text-center uppercase tracking-widest">Player Stats</h3>
+            <div className="grid grid-cols-4 gap-2">
+                <CombatStatDisplay label="STR" value={player.currentStats.str} color="text-red-400" />
+                <CombatStatDisplay label="DEX" value={player.currentStats.dex} color="text-green-400" />
+                <CombatStatDisplay label="INT" value={player.currentStats.int} color="text-blue-400" />
+                <CombatStatDisplay label="DEF" value={player.currentStats.defense} />
+                
+                <CombatStatDisplay label="CRIT" value={`${player.currentStats.critRate}%`} />
+                <CombatStatDisplay label="EVA" value={`${player.currentStats.evasion}%`} />
+                <CombatStatDisplay label="BLOCK" value={`${player.currentStats.blockChance}%`} color="text-cyan-400" />
+                <CombatStatDisplay label="VAMP" value={`${player.currentStats.lifesteal}%`} color="text-pink-400" />
             </div>
-            <HealthBar current={runState.playerCurrentHpInRun} max={player.currentStats.maxHp} label="HP" />
-            
-            {/* Player Stats Grid */}
-            <div className="grid grid-cols-4 gap-1 mt-1.5 pt-1.5 border-t border-slate-700">
-              <CombatStatDisplay label="STR" value={player.currentStats.str} color="text-red-400" />
-              <CombatStatDisplay label="DEX" value={player.currentStats.dex} color="text-green-400" />
-              <CombatStatDisplay label="INT" value={player.currentStats.int} color="text-blue-400" />
-              <CombatStatDisplay label="DEF" value={player.currentStats.defense} />
-              
-              <CombatStatDisplay label="CRIT" value={`${player.currentStats.critRate}%`} />
-              <CombatStatDisplay label="EVA" value={`${player.currentStats.evasion}%`} />
-              <CombatStatDisplay label="BLOCK" value={`${player.currentStats.blockChance}%`} color="text-cyan-400" />
-              <CombatStatDisplay label="VAMP" value={`${player.currentStats.lifesteal}%`} color="text-pink-400" />
-            </div>
-          </div>
-
-          <div className="bg-slate-800 border border-slate-700 rounded-xl p-2 shadow-lg">
-            <div className="relative group w-max mx-auto md:mx-0">
-              <div className="flex items-center mb-1.5 cursor-help">
-                  <div className="w-10 h-10 mr-2">
-                      {runState.currentEnemy.icon.startsWith('http') ? (
-                            <img src={runState.currentEnemy.icon} alt={runState.currentEnemy.name} className="w-full h-full object-contain" />
-                        ) : (
-                            <span className="text-2xl">{runState.currentEnemy.icon}</span>
-                        )}
-                  </div>
-                  <h3 className={`text-sm font-bold ${runState.currentEnemy.isElite ? 'text-yellow-400 drop-shadow-md' : 'text-slate-200'}`}>
-                      {runState.currentEnemy.name}
-                  </h3>
-              </div>
-              
-              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-32 invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-opacity duration-300 bg-slate-900 border border-[#D6721C] rounded-md shadow-lg p-1.5 text-xs z-30 pointer-events-none">
-                  <p className="font-bold text-[#D6721C] mb-1 text-center text-xs">Stats</p>
-                  <div className="space-y-0.5">
-                      <div className="flex justify-between">
-                          <span className="text-slate-400 text-[10px]">ATK</span>
-                          <span className="text-slate-200 font-bold text-xs">{runState.currentEnemy.stats.attack}</span>
-                      </div>
-                      <div className="flex justify-between">
-                          <span className="text-slate-400 text-[10px]">DEF</span>
-                          <span className="text-slate-200 font-bold text-xs">{runState.currentEnemy.stats.defense}</span>
-                      </div>
-                       <div className="flex justify-between">
-                          <span className="text-slate-400 text-[10px]">EVA</span>
-                          <span className="text-slate-200 font-bold text-xs">{runState.currentEnemy.stats.evasion}%</span>
-                      </div>
-                  </div>
-              </div>
-            </div>
-            
-            <HealthBar current={runState.currentEnemy.stats.hp} max={runState.currentEnemy.stats.maxHp} label="Enemy HP" />
-          </div>
         </div>
 
-        {/* Combat Log */}
+        {/* 3. THE ARENA (Player VS Enemy) */}
+        <div className="bg-slate-800 border border-slate-700 rounded-xl p-3 shadow-lg flex-shrink-0">
+            <div className="flex items-center justify-between">
+                
+                {/* Left: PLAYER */}
+                <div className="flex flex-col items-center w-24">
+                     <div className="w-14 h-14 bg-slate-900/50 border-2 border-slate-600 rounded-lg p-1 mb-2 shadow-md">
+                        {player.classInfo.icon.startsWith('http') ? (
+                            <img src={player.classInfo.icon} alt={player.classInfo.name} className="w-full h-full object-contain" />
+                        ) : (
+                            <span className="text-3xl flex items-center justify-center h-full">{player.classInfo.icon}</span>
+                        )}
+                     </div>
+                     <span className="text-xs font-bold text-slate-200 mb-1 truncate w-full text-center">{player.name}</span>
+                     <HealthBar current={runState.playerCurrentHpInRun} max={player.currentStats.maxHp} showLabel={false} />
+                     <p className="text-[9px] text-slate-400 mt-0.5">{runState.playerCurrentHpInRun}/{player.currentStats.maxHp}</p>
+                </div>
+
+                {/* Center: BATTLE ANIMATION */}
+                <div className="flex-1 flex flex-col items-center justify-center relative h-full">
+                    <div className={`transition-all duration-100 transform ${clashAnimation ? 'scale-125 rotate-12 drop-shadow-[0_0_10px_rgba(214,114,28,0.8)]' : 'scale-100 opacity-80'}`}>
+                         <span className="text-4xl md:text-5xl">⚔️</span>
+                    </div>
+                    {clashAnimation && (
+                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-0.5 bg-white/50 animate-ping"></div>
+                    )}
+                </div>
+
+                {/* Right: ENEMY */}
+                <div className="flex flex-col items-center w-24">
+                     <div className="relative w-14 h-14 bg-slate-900/50 border-2 border-red-900/50 rounded-lg p-1 mb-2 shadow-md">
+                        {runState.currentEnemy.icon.startsWith('http') ? (
+                            <img src={runState.currentEnemy.icon} alt={runState.currentEnemy.name} className="w-full h-full object-contain" />
+                        ) : (
+                             <span className="text-3xl flex items-center justify-center h-full">{runState.currentEnemy.icon}</span>
+                        )}
+                        {/* Enemy Stats Hover/Tooltip */}
+                        <div className="absolute -bottom-2 -right-2 bg-slate-900 border border-slate-600 rounded px-1 z-10">
+                             <span className="text-[8px] font-bold text-red-400">ATK {runState.currentEnemy.stats.attack}</span>
+                        </div>
+                     </div>
+                     <span className={`text-xs font-bold mb-1 truncate w-full text-center ${runState.currentEnemy.isElite ? 'text-yellow-400' : 'text-slate-200'}`}>
+                         {runState.currentEnemy.name}
+                     </span>
+                     <HealthBar current={runState.currentEnemy.stats.hp} max={runState.currentEnemy.stats.maxHp} showLabel={false} />
+                     <p className="text-[9px] text-slate-400 mt-0.5">{runState.currentEnemy.stats.hp}/{runState.currentEnemy.stats.maxHp}</p>
+                </div>
+
+            </div>
+        </div>
+
+        {/* 4. COMBAT LOG (Intact placement) */}
         <div className="bg-slate-800 border border-slate-700 rounded-xl p-2 shadow-lg flex-1 min-h-0 flex flex-col md:max-h-[30vh] lg:max-h-[40vh]">
           <h3 className="text-xs font-bold text-slate-300 mb-1 border-b border-slate-700 pb-1 flex-shrink-0">Combat Log</h3>
           <div ref={logContainerRef} className="flex-grow overflow-y-auto pr-2 no-scrollbar">
@@ -315,12 +326,12 @@ const CombatScreen: React.FC<CombatScreenProps> = ({ player, runState, logs, onT
           </div>
         </div>
 
-        {/* Action Buttons */}
+        {/* 5. ACTION BUTTONS (Intact placement) */}
         <div className="grid grid-cols-3 gap-2 flex-shrink-0 mt-auto">
           <button
             onClick={onToggleAutoCombat}
             disabled={playerDead || isPostCombatPhase}
-            className={`w-full px-4 py-2.5 font-bold text-sm rounded shadow-md transition-all duration-300 focus:outline-none focus:ring-2 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed ${
+            className={`w-full px-4 py-3 font-bold text-sm rounded-lg shadow-md transition-all duration-300 focus:outline-none focus:ring-2 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed ${
                 isAuto 
                 ? 'bg-red-900/80 text-red-200 hover:bg-red-800 border border-red-700 focus:ring-red-500' 
                 : 'bg-green-700 text-white hover:bg-green-600 focus:ring-green-500 animate-pulse'
@@ -331,14 +342,14 @@ const CombatScreen: React.FC<CombatScreenProps> = ({ player, runState, logs, onT
           <button
             onClick={onUsePotion}
             disabled={playerDead || isPostCombatPhase || player.potionCount <= 0 || runState.playerCurrentHpInRun >= player.currentStats.maxHp}
-            className="w-full px-4 py-2.5 bg-blue-700 text-white font-bold text-sm rounded shadow-md hover:bg-blue-600 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed"
+            className="w-full px-4 py-3 bg-blue-700 text-white font-bold text-sm rounded-lg shadow-md hover:bg-blue-600 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed"
           >
             Potion ({player.potionCount})
           </button>
           <button
             onClick={onFlee}
             disabled={playerDead || isPostCombatPhase}
-            className="w-full px-4 py-2.5 bg-slate-600 text-slate-200 font-bold text-sm rounded shadow-md hover:bg-slate-500 transition-colors focus:outline-none focus:ring-2 focus:ring-slate-400 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed"
+            className="w-full px-4 py-3 bg-slate-600 text-slate-200 font-bold text-sm rounded-lg shadow-md hover:bg-slate-500 transition-colors focus:outline-none focus:ring-2 focus:ring-slate-400 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed"
           >
             Flee
           </button>

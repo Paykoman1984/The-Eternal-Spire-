@@ -134,7 +134,10 @@ const EquipmentSlotDisplay: React.FC<{
                         <p className={`font-bold ${rarityColor} leading-tight text-left`}>{item.name}</p>
                         <p className="text-slate-500 text-[9px] flex-shrink-0 pt-0.5">iLvl {item.itemLevel}</p>
                     </div>
-                    <p className="text-[9px] text-slate-400 mb-1 leading-tight text-left">{item.slot} • {item.rarity || 'Common'}</p>
+                    <p className="text-[9px] text-slate-400 mb-1 leading-tight text-left">
+                        {item.slot} • {item.rarity || 'Common'}
+                        {item.isTwoHanded ? ' • 2H' : ''}
+                    </p>
                     {isGhost && <p className="text-[9px] text-slate-500 italic text-left">(Two-Handed)</p>}
                     {!isGhost && Object.keys(item.stats).length > 0 && (
                         <div className="mt-1 border-t border-slate-600 pt-1 space-y-0.5">
@@ -383,7 +386,7 @@ const MainGameScreen: React.FC<MainGameScreenProps> = ({ player, onExitToProfile
           id: `item-${idx}-${item.name}`,
           icon: item.icon,
           name: item.name,
-          description: `${item.slot} • ${item.rarity}`,
+          description: `${item.slot}${item.isTwoHanded ? ' (2H)' : ''} • ${item.rarity}`,
           rarityColor: RARITY_COLORS[item.rarity],
           stats: item.stats,
           itemLevel: item.itemLevel,

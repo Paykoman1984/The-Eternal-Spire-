@@ -1,6 +1,4 @@
 
-
-
 import React from 'react';
 import type { Player, Equipment } from '../../types';
 import { RARITY_COLORS } from '../../data/items';
@@ -111,7 +109,7 @@ const ShopScreen: React.FC<ShopScreenProps> = ({ player, onExit, onBuyPotion, on
                                                     <p className={`text-sm font-bold truncate ${rarityColor}`}>{item.name}</p>
                                                     <span className="text-[9px] text-slate-400">iLvl {item.itemLevel}</span>
                                                 </div>
-                                                <p className="text-[9px] text-slate-500 mb-0.5">{item.slot} • {item.rarity || 'Common'}{item.weaponType ? ` (${item.weaponType})` : ''}</p>
+                                                <p className="text-[9px] text-slate-500 mb-0.5">{item.slot} • {item.rarity || 'Common'}{item.weaponType ? ` (${item.weaponType})` : ''}{item.isTwoHanded ? ' (2H)' : ''}</p>
                                                 <div className="flex flex-wrap gap-x-2 text-xs text-slate-400">
                                                     {Object.entries(item.stats).map(([stat, value]) => (
                                                         <span key={stat}>{stat.toUpperCase()}: <span className="text-green-400">+{value}</span></span>

@@ -1,6 +1,6 @@
 
 import React, { useRef, useEffect, useState } from 'react';
-import type { Player, RunState, CombatLog, Equipment, Stats } from '../../types';
+import type { Player, RunState, CombatLog, Equipment, Stats, GearSlot } from '../../types';
 import { RARITY_COLORS } from '../../data/items';
 
 interface CombatScreenProps {
@@ -9,7 +9,7 @@ interface CombatScreenProps {
   logs: CombatLog[];
   onToggleAutoCombat: () => void;
   onFlee: () => void;
-  onLootAction: (action: 'take' | 'sell' | 'equip') => void;
+  onLootAction: (action: 'take' | 'sell' | 'equip', targetSlot?: GearSlot) => void;
   onUsePotion: () => void;
 }
 
@@ -62,31 +62,31 @@ const StatComparison: React.FC<{ label: string, oldValue: number, newValue: numb
     );
 };
 
-const ItemCard: React.FC<{ title: string, item: Equipment | null }> = ({ title, item }) => {
+const ItemCard: React.FC<{ title: string, item: Equipment | null, compact?: boolean }> = ({ title, item, compact = false }) => {
     const rarityColor = item ? (RARITY_COLORS[item.rarity || 'Common'] || 'text-[#D6721C]') : 'text-[#D6721C]';
 
     return (
-        <div className="bg-slate-900/80 border border-slate-700 rounded-lg p-2 w-full">
+        <div className={`bg-slate-900/80 border border-slate-700 rounded-lg p-2 w-full ${compact ? 'text-[10px]' : ''}`}>
             <h4 className="text-xs font-bold text-slate-400 border-b border-slate-700 pb-1 mb-1.5">{title}</h4>
             {item ? (
                 <>
                     <div className="flex items-center mb-1.5">
-                        <div className="w-10 h-10 mr-2 flex-shrink-0">
+                        <div className={`${compact ? 'w-8 h-8' : 'w-10 h-10'} mr-2 flex-shrink-0`}>
                              {item.icon.startsWith('http') ? (
                                 <img src={item.icon} alt={item.name} className="w-full h-full object-contain" />
                             ) : (
                                 <span className="text-2xl">{item.icon}</span>
                             )}
                         </div>
-                        <div className="flex flex-col">
-                            <span className={`font-bold text-sm ${rarityColor}`}>{item.name}</span>
+                        <div className="flex flex-col min-w-0">
+                            <span className={`font-bold ${compact ? 'text-xs' : 'text-sm'} ${rarityColor} truncate`}>{item.name}</span>
                             <div className="flex justify-between w-full pr-1">
-                                <span className="text-[10px] text-slate-500">
+                                <span className="text-[10px] text-slate-500 truncate mr-1">
                                     {item.slot} • {item.rarity || 'Common'}
                                     {item.weaponType ? ` (${item.weaponType})` : ''}
                                     {item.isTwoHanded ? ' (2H)' : ''}
                                 </span>
-                                <span className="text-[10px] text-slate-400 font-semibold">iLvl {item.itemLevel}</span>
+                                <span className="text-[10px] text-slate-400 font-semibold whitespace-nowrap">iLvl {item.itemLevel}</span>
                             </div>
                         </div>
                     </div>
@@ -112,29 +112,76 @@ const ItemCard: React.FC<{ title: string, item: Equipment | null }> = ({ title, 
 const LootDecision: React.FC<{
     player: Player;
     newItem: Equipment;
-    oldItem: Equipment | null;
+    oldItem: Equipment | null; // This will act as the default fallback
     itemsRemaining: number;
-    onLootAction: (action: 'take' | 'sell' | 'equip') => void;
+    onLootAction: (action: 'take' | 'sell' | 'equip', targetSlot?: GearSlot) => void;
 }> = ({ player, newItem, oldItem, itemsRemaining, onLootAction }) => {
-    const allStats = Array.from(new Set([...Object.keys(newItem.stats), ...Object.keys(oldItem?.stats ?? {})])) as (keyof Stats)[];
     
+    // --- CHOICE ELIGIBILITY LOGIC ---
+    const weaponType = newItem.weaponType || 'None';
+    
+    // Check if the class allows this weapon type at all
+    // Allow if it's 'None' (armor/accessories) OR if explicitly allowed by class
+    const isClassAllowed = weaponType === 'None' || player.classInfo.allowedWeaponTypes.some(t => t === weaponType);
+
+    const isShieldOrTome = ['Shield', 'Tome'].includes(weaponType);
+    const isWeapon = !isShieldOrTome && weaponType !== 'None';
+    const isTwoHanded = !!newItem.isTwoHanded;
+
+    // Can go in Main Hand? 
+    // Yes if: Class allows it AND it is a Weapon (not shield/tome).
+    // (Note: 2H weapons go here).
+    const canMain = isClassAllowed && isWeapon;
+
+    // Can go in Off Hand?
+    // Yes if: Class allows it AND ((It is a weapon AND not 2H) OR (It is a Shield/Tome))
+    // This allows 1H swords/daggers/etc to go to OffHand even if they default to MainHand slot.
+    const canOff = isClassAllowed && ((isWeapon && !isTwoHanded) || isShieldOrTome);
+
+    // Show Dual Choice if valid for BOTH slots
+    // This happens for 1H Weapons for classes that allow them.
+    const showDualChoice = canMain && canOff;
+
+    const mainHandItem = player.equipment.MainHand ?? null;
+    const offHandItem = player.equipment.OffHand ?? null;
+
     const sellValue = Math.floor((newItem.cost || 10) * 0.2);
     const occupiedCount = player.inventory.length + (player.potionCount > 0 ? 1 : 0);
     const isBagFull = occupiedCount >= 24;
     
-    const canEquipClass = !newItem.weaponType || player.classInfo.allowedWeaponTypes.includes(newItem.weaponType);
-    let canEquipOffHand = true;
-    if (newItem.slot === 'OffHand') {
-        const mainHand = player.equipment.MainHand;
-        if (!mainHand || mainHand.isTwoHanded) canEquipOffHand = false;
+    // Standard Check for single-slot equip button (fallback)
+    const canSwapDefault = !oldItem || !isBagFull; 
+    let canEquipDefault = isClassAllowed && canSwapDefault;
+    
+    // Special constraint for Standard View if forced to OffHand (e.g. Shield) but MainHand is 2H
+    if (!showDualChoice && canOff && !canMain) {
+        if (mainHandItem && mainHandItem.isTwoHanded) {
+             canEquipDefault = false; // Cannot equip shield if using 2H weapon (must manually unequip main first or use dual logic if we implemented a swap for 2h->1h+shield here, but simple block is safer for now)
+        }
     }
-    const canSwap = !oldItem || !isBagFull; 
-    const canEquip = canEquipClass && canEquipOffHand && canSwap;
+
+    // Helper for generating stat comparison
+    const renderComparison = (baseItem: Equipment | null, targetItem: Equipment) => {
+        const allStats = Array.from(new Set([...Object.keys(targetItem.stats), ...Object.keys(baseItem?.stats ?? {})])) as (keyof Stats)[];
+        if (allStats.length === 0) return <p className="text-xs text-slate-500">No stat changes.</p>;
+        
+        return allStats.map(stat => {
+            if (stat === 'itemLevel' as any) return null; 
+            return (
+                <StatComparison 
+                    key={stat}
+                    label={stat.toUpperCase()}
+                    oldValue={baseItem?.stats[stat] ?? 0}
+                    newValue={targetItem.stats[stat] ?? 0}
+                />
+            );
+        });
+    };
 
     return (
-        <div className="absolute inset-0 bg-slate-900/90 z-50 flex items-center justify-center animate-fadeIn p-4">
-            <div className="bg-slate-800 border-2 border-[#D6721C] rounded-xl p-3 max-w-sm w-full shadow-2xl">
-                <div className="flex justify-between items-center mb-2 border-b border-slate-700 pb-1">
+        <div className="absolute inset-0 bg-slate-900/95 z-50 flex items-center justify-center animate-fadeIn p-4 overflow-y-auto">
+            <div className="bg-slate-800 border-2 border-[#D6721C] rounded-xl p-3 max-w-md w-full shadow-2xl flex flex-col max-h-[90vh]">
+                <div className="flex justify-between items-center mb-2 border-b border-slate-700 pb-1 flex-shrink-0">
                     <h3 className="text-base font-bold text-[#D6721C]">New Item Dropped!</h3>
                     {itemsRemaining > 1 && (
                         <span className="text-[10px] text-slate-300 font-bold bg-slate-700 px-2 py-0.5 rounded-full">
@@ -143,54 +190,98 @@ const LootDecision: React.FC<{
                     )}
                 </div>
                 
-                <div className="flex gap-2 mb-2">
-                    <ItemCard title="Equipped" item={oldItem} />
+                {/* New Item Always Shown at Top */}
+                <div className="mb-2 flex-shrink-0">
                     <ItemCard title="New Item" item={newItem} />
                 </div>
                 
-                <div className="bg-slate-900/80 border border-slate-700 rounded-lg p-2 mb-3">
-                     <h4 className="text-xs font-bold text-slate-400 border-b border-slate-700 pb-1 mb-1.5">Comparison</h4>
-                     {allStats.length > 0 ? allStats.map(stat => {
-                        if (stat === 'itemLevel' as any) return null; 
-                        return (
-                            <StatComparison 
-                                key={stat}
-                                label={stat.toUpperCase()}
-                                oldValue={oldItem?.stats[stat] ?? 0}
-                                newValue={newItem.stats[stat] ?? 0}
-                            />
-                        );
-                     }) : <p className="text-xs text-slate-500">No stat changes.</p>}
+                <div className="flex-grow overflow-y-auto no-scrollbar">
+                    {showDualChoice ? (
+                        <div className="flex flex-col gap-2">
+                             <div className="text-center text-xs text-slate-400 font-bold uppercase tracking-wider my-1">- Choose Slot -</div>
+                             
+                             {/* Choice A: Main Hand */}
+                             <div className="bg-slate-900/50 border border-slate-700 rounded-lg p-2">
+                                <ItemCard title="Main Hand (Current)" item={mainHandItem} compact />
+                                <div className="mt-1 border-t border-slate-700 pt-1 grid grid-cols-2 gap-x-2">
+                                     <div className="col-span-2 mb-1">
+                                         {renderComparison(mainHandItem, newItem)}
+                                     </div>
+                                     <button 
+                                        onClick={() => onLootAction('equip', 'MainHand')}
+                                        disabled={!canSwapDefault && !!mainHandItem} // Disable if bag full and swapping
+                                        className="col-span-2 px-2 py-1 bg-cyan-700 text-white font-bold text-xs rounded hover:bg-cyan-600 transition-colors disabled:bg-slate-700 disabled:text-slate-500"
+                                     >
+                                         Replace Main Hand
+                                     </button>
+                                </div>
+                             </div>
+
+                             {/* Choice B: Off Hand */}
+                             <div className="bg-slate-900/50 border border-slate-700 rounded-lg p-2">
+                                <ItemCard title="Off Hand (Current)" item={offHandItem} compact />
+                                <div className="mt-1 border-t border-slate-700 pt-1 grid grid-cols-2 gap-x-2">
+                                    <div className="col-span-2 mb-1">
+                                         {renderComparison(offHandItem, newItem)}
+                                     </div>
+                                     <button 
+                                        onClick={() => onLootAction('equip', 'OffHand')}
+                                        disabled={!canSwapDefault && !!offHandItem}
+                                        className="col-span-2 px-2 py-1 bg-cyan-700 text-white font-bold text-xs rounded hover:bg-cyan-600 transition-colors disabled:bg-slate-700 disabled:text-slate-500"
+                                     >
+                                         {offHandItem ? 'Replace Off Hand' : 'Equip to Off Hand'}
+                                     </button>
+                                </div>
+                             </div>
+                        </div>
+                    ) : (
+                        // Standard Comparison View
+                        <div className="flex flex-col gap-2 mb-2">
+                            <ItemCard title="Equipped" item={oldItem} />
+                            <div className="bg-slate-900/80 border border-slate-700 rounded-lg p-2 w-full">
+                                <h4 className="text-xs font-bold text-slate-400 border-b border-slate-700 pb-1 mb-1.5">Stat Changes</h4>
+                                <div className="flex flex-col gap-1">
+                                    {renderComparison(oldItem, newItem)}
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
                 
-                {isBagFull && canSwap && (
-                     !canSwap && <p className="text-[10px] text-red-400 font-bold text-center mb-2">Inventory Full! Cannot swap current item.</p>
-                )}
-                {isBagFull && !canSwap && (
-                     <p className="text-[10px] text-red-400 font-bold text-center mb-2">Inventory Full! You must Sell.</p>
-                )}
-                 {!canEquipClass && <p className="text-[10px] text-red-400 font-bold text-center mb-2">Class Restricted</p>}
-                 {!canEquipOffHand && <p className="text-[10px] text-red-400 font-bold text-center mb-2">Requires 1H Weapon</p>}
+                {/* Warnings & Common Actions */}
+                <div className="mt-2 flex-shrink-0">
+                    {isBagFull && canSwapDefault && (
+                        !canSwapDefault && <p className="text-[10px] text-red-400 font-bold text-center mb-2">Inventory Full! Cannot swap current item.</p>
+                    )}
+                    {isBagFull && !canSwapDefault && (
+                        <p className="text-[10px] text-red-400 font-bold text-center mb-2">Inventory Full! You must Sell.</p>
+                    )}
+                    {!isClassAllowed && <p className="text-[10px] text-red-400 font-bold text-center mb-2">Class Restricted</p>}
+                    {!showDualChoice && !canEquipDefault && isClassAllowed && !isBagFull && <p className="text-[10px] text-red-400 font-bold text-center mb-2">Cannot Equip (2H conflict?)</p>}
 
-
-                <div className="grid grid-cols-3 gap-2">
-                    <button 
-                        onClick={() => onLootAction('equip')}
-                        disabled={!canEquip}
-                        className="w-full px-2 py-1.5 bg-cyan-700 text-white font-bold text-sm rounded-lg hover:bg-cyan-600 transition-colors disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed"
-                    >Equip</button>
-                    <button 
-                        onClick={() => onLootAction('take')}
-                        disabled={isBagFull}
-                        className="w-full px-2 py-1.5 bg-green-600 text-white font-bold text-sm rounded-lg hover:bg-green-500 transition-colors disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed"
-                    >Take</button>
-                    <button 
-                        onClick={() => onLootAction('sell')}
-                        className="w-full px-2 py-1.5 bg-purple-700 text-white font-bold text-sm rounded-lg hover:bg-purple-600 transition-colors flex items-center justify-center gap-1"
-                    >
-                        <span>Sell</span>
-                        <span className="text-[9px] bg-black/30 px-1 rounded text-purple-200">{sellValue}</span>
-                    </button>
+                    <div className="grid grid-cols-3 gap-2">
+                        {!showDualChoice && (
+                            <button 
+                                onClick={() => onLootAction('equip')}
+                                disabled={!canEquipDefault}
+                                className="w-full px-2 py-1.5 bg-cyan-700 text-white font-bold text-sm rounded-lg hover:bg-cyan-600 transition-colors disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed"
+                            >Equip</button>
+                        )}
+                        {showDualChoice && <div className="hidden"></div> /* Spacer if dual choice is active, equip buttons are above */}
+                        
+                        <button 
+                            onClick={() => onLootAction('take')}
+                            disabled={isBagFull}
+                            className={`w-full px-2 py-1.5 bg-green-600 text-white font-bold text-sm rounded-lg hover:bg-green-500 transition-colors disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed ${showDualChoice ? 'col-span-1' : ''}`}
+                        >Take</button>
+                        <button 
+                            onClick={() => onLootAction('sell')}
+                            className={`w-full px-2 py-1.5 bg-purple-700 text-white font-bold text-sm rounded-lg hover:bg-purple-600 transition-colors flex items-center justify-center gap-1 ${showDualChoice ? 'col-span-1' : ''}`}
+                        >
+                            <span>Sell</span>
+                            <span className="text-[9px] bg-black/30 px-1 rounded text-purple-200">{sellValue}</span>
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -261,7 +352,7 @@ const CombatScreen: React.FC<CombatScreenProps> = ({ player, runState, logs, onT
         const isCombatEvent = newLogs.some(log => 
             log.message.includes("hit") || 
             log.message.includes("dodged") || 
-            log.message.includes("BLOCKED") ||
+            log.message.includes("BLOCKED") || 
             log.message.includes("damage") ||
             log.message.includes("defeated")
         );

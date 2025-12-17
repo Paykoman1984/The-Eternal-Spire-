@@ -16,7 +16,7 @@ import ProfileScreen from './components/screens/ProfileScreen';
 import RunSummaryScreen from './components/screens/RunSummaryScreen';
 import StatsScreen from './components/screens/StatsScreen';
 import NameSelectionScreen from './components/screens/NameSelectionScreen';
-import { GEAR_SLOTS } from './constants';
+import { GEAR_SLOTS, CLASSES } from './constants';
 import { ITEM_TEMPLATES } from './data/items';
 
 const PROFILES_STORAGE_KEY = 'eternal_spire_profiles';
@@ -126,8 +126,13 @@ const App: React.FC = () => {
                                 });
                             }
                             
-                            // Fix Icon logic omitted for brevity as it is extensive, assuming it works from previous logic.
-                            // ... [Icon Fix Logic would be here] ...
+                            // NEW: Sync Class Definitions (Enables Mage Shields / Updates for existing saves)
+                            if (updatedProfile.classInfo && updatedProfile.classInfo.name) {
+                                const classDef = CLASSES.find(c => c.name === updatedProfile.classInfo.name);
+                                if (classDef) {
+                                    updatedProfile.classInfo.allowedWeaponTypes = classDef.allowedWeaponTypes;
+                                }
+                            }
 
                             return updatedProfile;
                         }
@@ -573,7 +578,7 @@ const App: React.FC = () => {
       setRunState(prev => prev ? ({ ...prev, isAutoBattling: !prev.isAutoBattling }) : null);
   }, []);
 
-  const handleLootDecision = useCallback((action: 'take' | 'sell' | 'equip') => {
+  const handleLootDecision = useCallback((action: 'take' | 'sell' | 'equip', targetSlot?: GearSlot) => {
     if (!runState || !runState.pendingLoot || runState.pendingLoot.length === 0) return;
     const activePlayer = activeProfileIndex !== null ? profiles[activeProfileIndex] : null;
     if (!activePlayer) return;
@@ -589,30 +594,50 @@ const App: React.FC = () => {
     if (action === 'equip') {
         updateCurrentPlayer(player => {
              const canEquipClass = !lootItem.weaponType || player.classInfo.allowedWeaponTypes.includes(lootItem.weaponType);
-             let canEquipOffHand = true;
-             if (lootItem.slot === 'OffHand') {
-                 const mainHand = player.equipment.MainHand;
-                 if (!mainHand || mainHand.isTwoHanded) canEquipOffHand = false;
-             }
-             if (!canEquipClass || !canEquipOffHand) return player;
+             
+             // Base check (ignoring dual wield logic for a moment, just raw class compatibility)
+             if (!canEquipClass) return player;
+
+             // Determine the actual slot (allow override if targetSlot is passed)
+             let finalSlot = targetSlot || lootItem.slot;
+
+             // Force MainHand if item is TwoHanded (can never be OffHand)
+             if (lootItem.isTwoHanded) finalSlot = 'MainHand';
+
+             // Clone item and update its slot property if we are reassigning it (e.g. Sword to OffHand)
+             const itemToEquip: Equipment = { ...lootItem, slot: finalSlot };
+             
+             // Dual Wield Slot Integrity Checks:
+             // 1. If equipping to OffHand, ensure item isn't 2H (handled above)
+             // 2. If equipping to OffHand, ensure MainHand isn't 2H. If it is, unequip MainHand.
+             // 3. If equipping to MainHand and item is 2H, unequip OffHand.
 
              let updatedPlayer = { ...player };
              const newInventory = [...updatedPlayer.inventory];
              let oldItem: Equipment | undefined;
-             
-             if (lootItem.slot === 'MainHand') {
-                 oldItem = updatedPlayer.equipment.MainHand;
-                 updatedPlayer.equipment.MainHand = lootItem;
-                 if (lootItem.isTwoHanded && updatedPlayer.equipment.OffHand) {
+
+             if (finalSlot === 'OffHand') {
+                 // Check if MainHand is 2H, if so unequip it
+                 if (updatedPlayer.equipment.MainHand && updatedPlayer.equipment.MainHand.isTwoHanded) {
+                     newInventory.push(updatedPlayer.equipment.MainHand);
+                     delete updatedPlayer.equipment.MainHand;
+                 }
+                 
+                 oldItem = updatedPlayer.equipment.OffHand;
+                 updatedPlayer.equipment.OffHand = itemToEquip;
+             } else if (finalSlot === 'MainHand') {
+                 // Check if new item is 2H, if so unequip OffHand
+                 if (itemToEquip.isTwoHanded && updatedPlayer.equipment.OffHand) {
                      newInventory.push(updatedPlayer.equipment.OffHand);
                      delete updatedPlayer.equipment.OffHand;
                  }
-             } else if (lootItem.slot === 'OffHand') {
-                 oldItem = updatedPlayer.equipment.OffHand;
-                 updatedPlayer.equipment.OffHand = lootItem;
+                 
+                 oldItem = updatedPlayer.equipment.MainHand;
+                 updatedPlayer.equipment.MainHand = itemToEquip;
              } else {
-                 oldItem = updatedPlayer.equipment[lootItem.slot];
-                 updatedPlayer.equipment[lootItem.slot] = lootItem;
+                 // Armor slots
+                 oldItem = updatedPlayer.equipment[finalSlot];
+                 updatedPlayer.equipment[finalSlot] = itemToEquip;
              }
 
              if (oldItem) newInventory.push(oldItem);
@@ -624,7 +649,7 @@ const App: React.FC = () => {
              }
              
              updatedPlayer.inventory = newInventory;
-             addLog(`You equipped ${lootItem.name}.`, 'text-cyan-400');
+             addLog(`You equipped ${itemToEquip.name}.`, 'text-cyan-400');
              
              const hpBefore = updatedPlayer.currentHp;
              const maxHpBefore = updatedPlayer.currentStats.maxHp;
@@ -730,13 +755,25 @@ const App: React.FC = () => {
           if (!itemToEquip) return player;
           const canEquipClass = !itemToEquip.weaponType || player.classInfo.allowedWeaponTypes.includes(itemToEquip.weaponType);
           if (!canEquipClass) return player; 
+          
+          // Logic to check dual wield for bag equip (simplified - defaults to slot)
           if (itemToEquip.slot === 'OffHand') {
               const mainHand = player.equipment.MainHand;
               if (!mainHand || mainHand.isTwoHanded) return player;
           }
 
           let updatedPlayer = { ...player };
-          const slot = itemToEquip.slot;
+          let slot = itemToEquip.slot;
+
+          // SMART EQUIP LOGIC: Auto-fill OffHand with 1H weapon if MainHand is full but OffHand is empty
+          if (slot === 'MainHand' && !itemToEquip.isTwoHanded) {
+              if (updatedPlayer.equipment.MainHand && !updatedPlayer.equipment.OffHand) {
+                  // Ensure current MainHand isn't 2H (which blocks OffHand)
+                  if (!updatedPlayer.equipment.MainHand.isTwoHanded) {
+                      slot = 'OffHand';
+                  }
+              }
+          }
           
           const newInventory = [...updatedPlayer.inventory];
           newInventory.splice(inventoryIndex, 1);

@@ -1,5 +1,7 @@
 
 
+
+
 import type { Equipment, Stats, GearSlot, Rarity, WeaponType } from '../types';
 
 type ItemTemplate = Omit<Equipment, 'name' | 'stats' | 'rarity' | 'itemLevel'> & {
@@ -21,9 +23,9 @@ export const ITEM_TEMPLATES: Record<GearSlot, ItemTemplate[]> = {
         { name: 'Falchion', slot: 'MainHand', icon: `${ICON_BASE}/broadsword.svg${COLOR_PARAM}`, weaponType: 'Sword', possibleStats: ['str', 'evasion', 'dex'] },
         
         { name: 'Warhammer', slot: 'MainHand', icon: `${ICON_BASE}/warhammer.svg${COLOR_PARAM}`, weaponType: 'Hammer', isTwoHanded: true, possibleStats: ['str', 'defense', 'blockChance'] },
-        { name: 'Maul', slot: 'MainHand', icon: `${ICON_BASE}/wood-club.svg${COLOR_PARAM}`, weaponType: 'Hammer', isTwoHanded: true, possibleStats: ['str', 'critRate', 'blockChance'] },
+        { name: 'Maul', slot: 'MainHand', icon: `${ICON_BASE}/spiked-club.svg${COLOR_PARAM}`, weaponType: 'Hammer', isTwoHanded: true, possibleStats: ['str', 'critRate', 'blockChance'] },
         { name: 'Battle Axe', slot: 'MainHand', icon: `${ICON_BASE}/battle-axe.svg${COLOR_PARAM}`, weaponType: 'Hammer', isTwoHanded: true, possibleStats: ['str', 'critRate', 'lifesteal'] }, 
-        { name: 'Sledgehammer', slot: 'MainHand', icon: `${ICON_BASE}/warhammer.svg${COLOR_PARAM}`, weaponType: 'Hammer', isTwoHanded: true, possibleStats: ['str', 'maxHp', 'defense'] },
+        { name: 'Sledgehammer', slot: 'MainHand', icon: `${ICON_BASE}/large-hammer.svg${COLOR_PARAM}`, weaponType: 'Hammer', isTwoHanded: true, possibleStats: ['str', 'maxHp', 'defense'] },
         { name: 'Great Maul', slot: 'MainHand', icon: `${ICON_BASE}/spiked-mace.svg${COLOR_PARAM}`, weaponType: 'Hammer', isTwoHanded: true, possibleStats: ['str', 'critRate', 'maxHp'] },
         { name: 'War Axe', slot: 'MainHand', icon: `${ICON_BASE}/battle-axe.svg${COLOR_PARAM}`, weaponType: 'Hammer', possibleStats: ['str', 'dex', 'lifesteal'] },
 
@@ -33,11 +35,11 @@ export const ITEM_TEMPLATES: Record<GearSlot, ItemTemplate[]> = {
         { name: 'Stiletto', slot: 'MainHand', icon: `${ICON_BASE}/plain-dagger.svg${COLOR_PARAM}`, weaponType: 'Dagger', possibleStats: ['dex', 'critRate', 'evasion'] },
         { name: 'Dirk', slot: 'MainHand', icon: `${ICON_BASE}/plain-dagger.svg${COLOR_PARAM}`, weaponType: 'Dagger', possibleStats: ['dex', 'str', 'evasion'] },
         
-        { name: 'Longbow', slot: 'MainHand', icon: `${ICON_BASE}/bow-arrow.svg${COLOR_PARAM}`, weaponType: 'Bow', isTwoHanded: true, possibleStats: ['dex', 'critRate', 'evasion'] },
+        { name: 'Longbow', slot: 'MainHand', icon: `${ICON_BASE}/high-shot.svg${COLOR_PARAM}`, weaponType: 'Bow', isTwoHanded: true, possibleStats: ['dex', 'critRate', 'evasion'] },
         { name: 'Crossbow', slot: 'MainHand', icon: `${ICON_BASE}/crossbow.svg${COLOR_PARAM}`, weaponType: 'Bow', isTwoHanded: true, possibleStats: ['dex', 'str', 'blockChance'] },
-        { name: 'Shortbow', slot: 'MainHand', icon: `${ICON_BASE}/bow-arrow.svg${COLOR_PARAM}`, weaponType: 'Bow', isTwoHanded: true, possibleStats: ['dex', 'evasion', 'lifesteal'] },
-        { name: 'Composite Bow', slot: 'MainHand', icon: `${ICON_BASE}/bow-arrow.svg${COLOR_PARAM}`, weaponType: 'Bow', isTwoHanded: true, possibleStats: ['dex', 'str', 'critRate'] },
-        { name: 'Elven Bow', slot: 'MainHand', icon: `${ICON_BASE}/bow-arrow.svg${COLOR_PARAM}`, weaponType: 'Bow', isTwoHanded: true, possibleStats: ['dex', 'int', 'evasion'] },
+        { name: 'Shortbow', slot: 'MainHand', icon: `${ICON_BASE}/high-shot.svg${COLOR_PARAM}`, weaponType: 'Bow', isTwoHanded: true, possibleStats: ['dex', 'evasion', 'lifesteal'] },
+        { name: 'Composite Bow', slot: 'MainHand', icon: `${ICON_BASE}/high-shot.svg${COLOR_PARAM}`, weaponType: 'Bow', isTwoHanded: true, possibleStats: ['dex', 'str', 'critRate'] },
+        { name: 'Elven Bow', slot: 'MainHand', icon: `${ICON_BASE}/high-shot.svg${COLOR_PARAM}`, weaponType: 'Bow', isTwoHanded: true, possibleStats: ['dex', 'int', 'evasion'] },
         { name: 'Heavy Crossbow', slot: 'MainHand', icon: `${ICON_BASE}/crossbow.svg${COLOR_PARAM}`, weaponType: 'Bow', isTwoHanded: true, possibleStats: ['dex', 'str', 'defense'] },
 
         // Mage Weapons (Staff, Mace)
@@ -48,7 +50,7 @@ export const ITEM_TEMPLATES: Record<GearSlot, ItemTemplate[]> = {
         
         { name: 'Mace', slot: 'MainHand', icon: `${ICON_BASE}/flanged-mace.svg${COLOR_PARAM}`, weaponType: 'Mace', possibleStats: ['int', 'str', 'blockChance'] },
         { name: 'Morningstar', slot: 'MainHand', icon: `${ICON_BASE}/flanged-mace.svg${COLOR_PARAM}`, weaponType: 'Mace', possibleStats: ['int', 'defense', 'lifesteal'] },
-        { name: 'War Scepter', slot: 'MainHand', icon: `${ICON_BASE}/sceptre-of-power.svg${COLOR_PARAM}`, weaponType: 'Mace', possibleStats: ['int', 'maxHp', 'lifesteal'] },
+        { name: 'War Scepter', slot: 'MainHand', icon: `${ICON_BASE}/orb-wand.svg${COLOR_PARAM}`, weaponType: 'Mace', possibleStats: ['int', 'maxHp', 'lifesteal'] },
         { name: 'Flanged Mace', slot: 'MainHand', icon: `${ICON_BASE}/flanged-mace.svg${COLOR_PARAM}`, weaponType: 'Mace', possibleStats: ['str', 'blockChance', 'int'] },
         { name: 'Holy Mace', slot: 'MainHand', icon: `${ICON_BASE}/flanged-mace.svg${COLOR_PARAM}`, weaponType: 'Mace', possibleStats: ['int', 'maxHp', 'defense'] },
     ],
@@ -58,6 +60,11 @@ export const ITEM_TEMPLATES: Record<GearSlot, ItemTemplate[]> = {
         { name: 'Iron Shield', slot: 'OffHand', icon: `${ICON_BASE}/shield.svg${COLOR_PARAM}`, weaponType: 'Shield', possibleStats: ['blockChance', 'defense', 'maxHp'] },
         { name: 'Tower Shield', slot: 'OffHand', icon: `${ICON_BASE}/shield.svg${COLOR_PARAM}`, weaponType: 'Shield', possibleStats: ['blockChance', 'defense', 'str'] },
         
+        // Warrior Off-hand Swords
+        { name: 'Shortsword', slot: 'OffHand', icon: `${ICON_BASE}/gladius.svg${COLOR_PARAM}`, weaponType: 'Sword', possibleStats: ['str', 'dex', 'critRate'] },
+        { name: 'Parrying Blade', slot: 'OffHand', icon: `${ICON_BASE}/rapier.svg${COLOR_PARAM}`, weaponType: 'Sword', possibleStats: ['str', 'evasion', 'defense'] },
+        { name: 'Defender', slot: 'OffHand', icon: `${ICON_BASE}/broadsword.svg${COLOR_PARAM}`, weaponType: 'Sword', possibleStats: ['defense', 'blockChance', 'maxHp'] },
+
         // Rogue Off-hand (Daggers/Bucklers)
         { name: 'Parrying Dagger', slot: 'OffHand', icon: `${ICON_BASE}/plain-dagger.svg${COLOR_PARAM}`, weaponType: 'Dagger', possibleStats: ['evasion', 'dex', 'critRate'] },
         { name: 'Buckler', slot: 'OffHand', icon: `${ICON_BASE}/round-shield.svg${COLOR_PARAM}`, weaponType: 'Shield', possibleStats: ['blockChance', 'evasion', 'dex'] },

@@ -24,7 +24,7 @@ export const CLASSES: PlayerClass[] = [
     name: 'Mage',
     description: 'A master of arcane arts. Sustains life by draining it from enemies.',
     baseStats: { str: 2, dex: 3, int: 10, maxHp: 90, defense: 3, critRate: 5, evasion: 5, blockChance: 0, lifesteal: 12 },
-    allowedWeaponTypes: ['Mace', 'Staff', 'Tome'],
+    allowedWeaponTypes: ['Mace', 'Staff', 'Tome', 'Shield'],
     icon: `${ICON_BASE}/wizard-face.svg${COLOR_PARAM}`,
   },
 ];

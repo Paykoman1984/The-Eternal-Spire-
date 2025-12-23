@@ -1,6 +1,4 @@
 
-
-
 import React, { useState, useEffect } from 'react';
 import type { Player } from '../../types';
 
@@ -33,7 +31,7 @@ const ProfileSlot: React.FC<{
     // Existing profile slot
     return (
       <div 
-        className="bg-slate-800 border-2 border-slate-700 rounded-xl p-3 flex flex-col text-left transition-all duration-300 shadow-lg h-full"
+        className="bg-slate-900/80 backdrop-blur-sm border-2 border-slate-700/50 rounded-xl p-3 flex flex-col text-left transition-all duration-300 shadow-lg h-full"
       >
         <div className="flex items-center mb-1">
             <div className="w-10 h-10 mr-2">
@@ -85,7 +83,7 @@ const ProfileSlot: React.FC<{
   // Empty profile slot
   return (
     <div 
-        className="bg-slate-800/50 border-2 border-dashed border-slate-700 rounded-xl p-4 flex flex-col justify-center items-center text-center h-full cursor-pointer hover:border-[#D6721C] hover:bg-slate-800 transition-all duration-300"
+        className="bg-slate-900/40 backdrop-blur-sm border-2 border-dashed border-slate-700 rounded-xl p-4 flex flex-col justify-center items-center text-center h-full cursor-pointer hover:border-[#D6721C] hover:bg-slate-800/60 transition-all duration-300"
         onClick={onStartNew}
     >
       <p className="text-3xl text-slate-600 mb-1">+</p>

@@ -17,7 +17,7 @@ const StatRow: React.FC<{ label: string; value: string | number; color?: string 
 const StatsScreen: React.FC<StatsScreenProps> = ({ player, onExit }) => {
     return (
         <div className="animate-fadeIn flex flex-col items-center justify-center h-full p-4">
-            <div className="bg-slate-800 border border-slate-700 rounded-xl p-3 shadow-lg w-full max-w-md">
+            <div className="bg-slate-900/80 backdrop-blur-sm border border-slate-700 rounded-xl p-3 shadow-lg w-full max-w-md">
                 <div className="flex justify-between items-center border-b-2 border-slate-700 pb-1.5 mb-3">
                     <h2 className="text-lg font-bold text-[#D6721C]">Account Statistics</h2>
                     <div className="w-8 h-8">
@@ -41,7 +41,7 @@ const StatsScreen: React.FC<StatsScreenProps> = ({ player, onExit }) => {
                 <div className="text-center">
                      <button
                         onClick={onExit}
-                        className="px-6 py-1.5 bg-slate-600 text-slate-200 font-bold text-sm rounded-lg hover:bg-slate-500 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-slate-400"
+                        className="px-6 py-1.5 bg-slate-600/90 text-slate-200 font-bold text-sm rounded-lg hover:bg-slate-500 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-slate-400"
                     >
                         Return
                     </button>

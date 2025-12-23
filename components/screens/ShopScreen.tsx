@@ -48,17 +48,17 @@ const ShopScreen: React.FC<ShopScreenProps> = ({ player, onExit, onBuyPotion, on
             {/* Header Section - Outside the main box */}
             <div className="w-full max-w-lg flex flex-col items-center mb-2 px-1 relative">
                 <h2 className="text-xl font-bold text-[#D6721C] drop-shadow-md mb-1">Shop</h2>
-                <div className="absolute right-0 top-0 flex items-center text-sm bg-slate-800/80 px-3 py-1 rounded-full border border-slate-600">
+                <div className="absolute right-0 top-0 flex items-center text-sm bg-slate-800/80 backdrop-blur-sm px-3 py-1 rounded-full border border-slate-600">
                     <span className="text-purple-400 mr-1.5">💎</span>
                     <span className="font-bold text-slate-200">{player.eternalShards}</span>
                 </div>
             </div>
 
-            <div className="bg-slate-800 border border-slate-700 rounded-xl p-2 shadow-lg w-full max-w-lg flex flex-col flex-1 max-h-[75vh] mb-3">
+            <div className="bg-slate-900/80 backdrop-blur-sm border border-slate-700/50 rounded-xl p-2 shadow-lg w-full max-w-lg flex flex-col flex-1 max-h-[75vh] mb-3">
                 
                 <div className="space-y-1.5 no-scrollbar flex-grow overflow-y-auto pr-1">
                     {/* Potion Item */}
-                    <div className="bg-slate-900/70 border border-slate-700 rounded-lg p-1.5 flex items-center justify-between">
+                    <div className="bg-slate-900/60 border border-slate-700 rounded-lg p-1.5 flex items-center justify-between">
                         <div className="flex items-center">
                             <div className="w-10 h-10 mr-2">
                                 <img src={`${ICON_BASE}/health-potion.svg${COLOR_PARAM}`} alt="Potion" className="w-full h-full object-contain" />
@@ -95,7 +95,7 @@ const ShopScreen: React.FC<ShopScreenProps> = ({ player, onExit, onBuyPotion, on
                                 const canEquipOffHand = !isOffHand || hasOneHanded;
                                 
                                 return (
-                                    <div key={index} className="bg-slate-900/70 border border-slate-700 rounded-lg p-1.5 flex items-center justify-between mb-1.5">
+                                    <div key={index} className="bg-slate-900/60 border border-slate-700/80 rounded-lg p-1.5 flex items-center justify-between mb-1.5">
                                         <div className="flex items-center overflow-hidden">
                                             <div className="w-10 h-10 mr-2 flex-shrink-0">
                                                  {item.icon.startsWith('http') ? (
@@ -141,7 +141,7 @@ const ShopScreen: React.FC<ShopScreenProps> = ({ player, onExit, onBuyPotion, on
             <div className="mt-auto w-full max-w-lg flex justify-between gap-3">
                  <button
                     onClick={onExit}
-                    className="flex-1 px-4 py-2 bg-slate-600 text-slate-200 font-bold text-sm rounded hover:bg-slate-500 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-slate-400 shadow-lg"
+                    className="flex-1 px-4 py-2 bg-slate-600/90 backdrop-blur-sm text-slate-200 font-bold text-sm rounded hover:bg-slate-500 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-slate-400 shadow-lg"
                 >
                     Return
                 </button>
@@ -150,7 +150,7 @@ const ShopScreen: React.FC<ShopScreenProps> = ({ player, onExit, onBuyPotion, on
                     <button
                         onClick={onRefresh}
                         disabled={!canRefresh}
-                        className="w-full h-full px-4 py-2 bg-blue-700 text-white font-bold text-sm rounded shadow-lg hover:bg-blue-600 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                        className="w-full h-full px-4 py-2 bg-blue-700/90 backdrop-blur-sm text-white font-bold text-sm rounded shadow-lg hover:bg-blue-600 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                     >
                         <span>🔄</span> {canAffordRefresh ? 'Refresh' : 'Need Shards'}
                     </button>

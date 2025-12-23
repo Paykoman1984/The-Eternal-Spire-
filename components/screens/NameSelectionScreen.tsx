@@ -18,7 +18,7 @@ const NameSelectionScreen: React.FC<NameSelectionScreenProps> = ({ onNameConfirm
 
     return (
         <div className="animate-fadeIn flex flex-col items-center justify-center h-full p-4 w-full">
-             <div className="bg-slate-800 border-2 border-slate-700 rounded-xl p-6 shadow-lg w-full max-w-sm text-center">
+             <div className="bg-slate-900/80 backdrop-blur-sm border-2 border-slate-700 rounded-xl p-6 shadow-lg w-full max-w-sm text-center">
                 <h2 className="text-xl font-bold text-[#D6721C] mb-4">Who are you?</h2>
                 <form onSubmit={handleSubmit} className="flex flex-col gap-4">
                     <input

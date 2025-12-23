@@ -1,7 +1,8 @@
 
 import React, { useRef, useEffect, useState } from 'react';
-import type { Player, RunState, CombatLog, Equipment, Stats, GearSlot } from '../../types';
+import type { Player, RunState, CombatLog, Equipment, Stats, GearSlot, Skill } from '../../types';
 import { RARITY_COLORS } from '../../data/items';
+import { SKILL_TREES } from '../../constants';
 
 interface CombatScreenProps {
   player: Player;
@@ -11,12 +12,17 @@ interface CombatScreenProps {
   onFlee: () => void;
   onLootAction: (action: 'take' | 'sell' | 'equip', targetSlot?: GearSlot) => void;
   onUsePotion: () => void;
+  onUseSkill: (skillId: string) => void;
 }
 
 // --- Sub Components ---
 
-const HealthBar: React.FC<{ current: number; max: number; label?: string; showLabel?: boolean }> = ({ current, max, label, showLabel = true }) => {
+const HealthBar: React.FC<{ current: number; max: number; label?: string; showLabel?: boolean; colorClass?: string }> = ({ current, max, label, showLabel = true, colorClass }) => {
   const percentage = max > 0 ? (current / max) * 100 : 0;
+  
+  const defaultColor = percentage > 50 ? 'bg-green-600' : percentage > 25 ? 'bg-[#D6721C]' : 'bg-red-600';
+  const finalColor = colorClass || defaultColor;
+
   return (
     <div className="w-full">
       {showLabel && (
@@ -25,10 +31,9 @@ const HealthBar: React.FC<{ current: number; max: number; label?: string; showLa
             <span className="text-xs">{current}/{max}</span>
           </div>
       )}
-      {/* Increased height to h-4 (16px) */}
       <div className="w-full bg-slate-900 rounded-full h-4 border border-slate-700 overflow-hidden relative shadow-inner">
         <div
-          className={`h-full transition-all duration-300 ${percentage > 50 ? 'bg-green-600' : percentage > 25 ? 'bg-[#D6721C]' : 'bg-red-600'}`}
+          className={`h-full transition-all duration-300 ${finalColor}`}
           style={{ width: `${percentage}%` }}
         ></div>
         {!showLabel && (
@@ -55,22 +60,22 @@ const StatComparison: React.FC<{ label: string, oldValue: number, newValue: numb
     if (diff < 0) color = 'text-red-400';
 
     return (
-        <div className={`flex justify-between items-center text-xs ${color}`}>
-            <span>{label}</span>
-            <span>{diff > 0 ? '+' : ''}{diff}</span>
+        <div className={`flex justify-between items-center text-xs ${color} px-2 py-1 bg-slate-900/40 rounded border border-slate-800`}>
+            <span className="font-semibold text-slate-300">{label}</span>
+            <span className="font-bold">{diff > 0 ? '+' : ''}{diff}</span>
         </div>
     );
 };
 
-const ItemCard: React.FC<{ title: string, item: Equipment | null, compact?: boolean }> = ({ title, item, compact = false }) => {
+const ItemCard: React.FC<{ title: string, item: Equipment | null, compact?: boolean, showStats?: boolean }> = ({ title, item, compact = false, showStats = true }) => {
     const rarityColor = item ? (RARITY_COLORS[item.rarity || 'Common'] || 'text-[#D6721C]') : 'text-[#D6721C]';
 
     return (
-        <div className={`bg-slate-900/80 border border-slate-700 rounded-lg p-2 w-full ${compact ? 'text-[10px]' : ''}`}>
-            <h4 className="text-xs font-bold text-slate-400 border-b border-slate-700 pb-1 mb-1.5">{title}</h4>
+        <div className={`bg-slate-900/80 border border-slate-700 rounded-lg p-2 w-full h-full flex flex-col ${compact ? 'text-[10px]' : ''}`}>
+            <h4 className="text-xs font-bold text-slate-400 border-b border-slate-700 pb-1 mb-1.5 text-center">{title}</h4>
             {item ? (
                 <>
-                    <div className="flex items-center mb-1.5">
+                    <div className="flex items-center mb-1.5 flex-1">
                         <div className={`${compact ? 'w-8 h-8' : 'w-10 h-10'} mr-2 flex-shrink-0`}>
                              {item.icon.startsWith('http') ? (
                                 <img src={item.icon} alt={item.name} className="w-full h-full object-contain" />
@@ -78,32 +83,34 @@ const ItemCard: React.FC<{ title: string, item: Equipment | null, compact?: bool
                                 <span className="text-2xl">{item.icon}</span>
                             )}
                         </div>
-                        <div className="flex flex-col min-w-0">
-                            <span className={`font-bold ${compact ? 'text-xs' : 'text-sm'} ${rarityColor} truncate`}>{item.name}</span>
-                            <div className="flex justify-between w-full pr-1">
-                                <span className="text-[10px] text-slate-500 truncate mr-1">
+                        <div className="flex flex-col min-w-0 flex-1">
+                            <span className={`font-bold ${compact ? 'text-xs' : 'text-sm'} ${rarityColor} truncate leading-tight`}>{item.name}</span>
+                            <div className="flex flex-col w-full mt-0.5">
+                                <span className="text-[9px] text-slate-500 truncate">
                                     {item.slot} • {item.rarity || 'Common'}
-                                    {item.weaponType ? ` (${item.weaponType})` : ''}
-                                    {item.isTwoHanded ? ' (2H)' : ''}
                                 </span>
-                                <span className="text-[10px] text-slate-400 font-semibold whitespace-nowrap">iLvl {item.itemLevel}</span>
+                                <span className="text-[9px] text-slate-400 font-semibold whitespace-nowrap">iLvl {item.itemLevel}</span>
                             </div>
                         </div>
                     </div>
-                    <div className="space-y-0.5">
-                        {Object.entries(item.stats).map(([stat, value]) => {
-                             if (stat === 'itemLevel') return null;
-                             return (
-                                <div key={stat} className="flex justify-between text-xs text-slate-300">
-                                    <span>{stat.toUpperCase()}</span>
-                                    <span>+{value}</span>
-                                </div>
-                             );
-                        })}
-                    </div>
+                    {showStats && (
+                        <div className="space-y-0.5 border-t border-slate-700/50 pt-1 mt-auto">
+                            {Object.entries(item.stats).map(([stat, value]) => {
+                                if (stat === 'itemLevel') return null;
+                                return (
+                                    <div key={stat} className="flex justify-between text-xs text-slate-300">
+                                        <span>{stat.toUpperCase()}</span>
+                                        <span>+{value}</span>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
                 </>
             ) : (
-                <p className="text-xs text-slate-500">None</p>
+                <div className="flex-1 flex items-center justify-center">
+                    <p className="text-xs text-slate-500 italic">Empty</p>
+                </div>
             )}
         </div>
     );
@@ -112,34 +119,21 @@ const ItemCard: React.FC<{ title: string, item: Equipment | null, compact?: bool
 const LootDecision: React.FC<{
     player: Player;
     newItem: Equipment;
-    oldItem: Equipment | null; // This will act as the default fallback
+    oldItem: Equipment | null; 
     itemsRemaining: number;
     onLootAction: (action: 'take' | 'sell' | 'equip', targetSlot?: GearSlot) => void;
 }> = ({ player, newItem, oldItem, itemsRemaining, onLootAction }) => {
     
-    // --- CHOICE ELIGIBILITY LOGIC ---
     const weaponType = newItem.weaponType || 'None';
-    
-    // Check if the class allows this weapon type at all
-    // Allow if it's 'None' (armor/accessories) OR if explicitly allowed by class
     const isClassAllowed = weaponType === 'None' || player.classInfo.allowedWeaponTypes.some(t => t === weaponType);
 
     const isShieldOrTome = ['Shield', 'Tome'].includes(weaponType);
     const isWeapon = !isShieldOrTome && weaponType !== 'None';
     const isTwoHanded = !!newItem.isTwoHanded;
 
-    // Can go in Main Hand? 
-    // Yes if: Class allows it AND it is a Weapon (not shield/tome).
-    // (Note: 2H weapons go here).
     const canMain = isClassAllowed && isWeapon;
-
-    // Can go in Off Hand?
-    // Yes if: Class allows it AND ((It is a weapon AND not 2H) OR (It is a Shield/Tome))
-    // This allows 1H swords/daggers/etc to go to OffHand even if they default to MainHand slot.
     const canOff = isClassAllowed && ((isWeapon && !isTwoHanded) || isShieldOrTome);
 
-    // Show Dual Choice if valid for BOTH slots
-    // This happens for 1H Weapons for classes that allow them.
     const showDualChoice = canMain && canOff;
 
     const mainHandItem = player.equipment.MainHand ?? null;
@@ -149,38 +143,39 @@ const LootDecision: React.FC<{
     const occupiedCount = player.inventory.length + (player.potionCount > 0 ? 1 : 0);
     const isBagFull = occupiedCount >= 24;
     
-    // Standard Check for single-slot equip button (fallback)
     const canSwapDefault = !oldItem || !isBagFull; 
     let canEquipDefault = isClassAllowed && canSwapDefault;
     
-    // Special constraint for Standard View if forced to OffHand (e.g. Shield) but MainHand is 2H
     if (!showDualChoice && canOff && !canMain) {
         if (mainHandItem && mainHandItem.isTwoHanded) {
-             canEquipDefault = false; // Cannot equip shield if using 2H weapon (must manually unequip main first or use dual logic if we implemented a swap for 2h->1h+shield here, but simple block is safer for now)
+             canEquipDefault = false; 
         }
     }
 
-    // Helper for generating stat comparison
     const renderComparison = (baseItem: Equipment | null, targetItem: Equipment) => {
         const allStats = Array.from(new Set([...Object.keys(targetItem.stats), ...Object.keys(baseItem?.stats ?? {})])) as (keyof Stats)[];
-        if (allStats.length === 0) return <p className="text-xs text-slate-500">No stat changes.</p>;
+        if (allStats.length === 0) return <p className="text-xs text-slate-500 text-center py-1">No stat changes.</p>;
         
-        return allStats.map(stat => {
-            if (stat === 'itemLevel' as any) return null; 
-            return (
-                <StatComparison 
-                    key={stat}
-                    label={stat.toUpperCase()}
-                    oldValue={baseItem?.stats[stat] ?? 0}
-                    newValue={targetItem.stats[stat] ?? 0}
-                />
-            );
-        });
+        return (
+            <div className="flex flex-col gap-1">
+                {allStats.map(stat => {
+                    if (stat === 'itemLevel' as any) return null; 
+                    return (
+                        <StatComparison 
+                            key={stat}
+                            label={stat.toUpperCase()}
+                            oldValue={baseItem?.stats[stat] ?? 0}
+                            newValue={targetItem.stats[stat] ?? 0}
+                        />
+                    );
+                })}
+            </div>
+        );
     };
 
     return (
-        <div className="absolute inset-0 bg-slate-900/95 z-50 flex items-center justify-center animate-fadeIn p-4 overflow-y-auto">
-            <div className="bg-slate-800 border-2 border-[#D6721C] rounded-xl p-3 max-w-md w-full shadow-2xl flex flex-col max-h-[90vh]">
+        <div className="absolute inset-0 bg-slate-900/95 z-50 flex items-center justify-center animate-fadeIn p-4 overflow-y-auto backdrop-blur-md">
+            <div className="bg-slate-900/90 border-2 border-[#D6721C] rounded-xl p-3 w-auto min-w-[340px] max-w-md shadow-2xl flex flex-col max-h-[90vh] backdrop-blur-md">
                 <div className="flex justify-between items-center mb-2 border-b border-slate-700 pb-1 flex-shrink-0">
                     <h3 className="text-base font-bold text-[#D6721C]">New Item Dropped!</h3>
                     {itemsRemaining > 1 && (
@@ -190,66 +185,61 @@ const LootDecision: React.FC<{
                     )}
                 </div>
                 
-                {/* New Item Always Shown at Top */}
-                <div className="mb-2 flex-shrink-0">
-                    <ItemCard title="New Item" item={newItem} />
-                </div>
-                
                 <div className="flex-grow overflow-y-auto no-scrollbar">
                     {showDualChoice ? (
-                        <div className="flex flex-col gap-2">
-                             <div className="text-center text-xs text-slate-400 font-bold uppercase tracking-wider my-1">- Choose Slot -</div>
-                             
-                             {/* Choice A: Main Hand */}
+                        <div className="flex flex-col gap-3">
+                             <div className="text-center text-xs text-slate-400 font-bold uppercase tracking-wider my-0.5">- Choose Slot -</div>
                              <div className="bg-slate-900/50 border border-slate-700 rounded-lg p-2">
-                                <ItemCard title="Main Hand (Current)" item={mainHandItem} compact />
-                                <div className="mt-1 border-t border-slate-700 pt-1 grid grid-cols-2 gap-x-2">
-                                     <div className="col-span-2 mb-1">
-                                         {renderComparison(mainHandItem, newItem)}
-                                     </div>
-                                     <button 
-                                        onClick={() => onLootAction('equip', 'MainHand')}
-                                        disabled={!canSwapDefault && !!mainHandItem} // Disable if bag full and swapping
-                                        className="col-span-2 px-2 py-1 bg-cyan-700 text-white font-bold text-xs rounded hover:bg-cyan-600 transition-colors disabled:bg-slate-700 disabled:text-slate-500"
-                                     >
-                                         Replace Main Hand
-                                     </button>
+                                <div className="flex gap-2 mb-2">
+                                    <div className="flex-1"><ItemCard title="New Item" item={newItem} compact showStats={false} /></div>
+                                    <div className="flex-1"><ItemCard title="Main Hand" item={mainHandItem} compact showStats={false} /></div>
                                 </div>
+                                <div className="mt-1 border-t border-slate-700 pt-2">
+                                     <p className="text-[10px] font-bold text-slate-500 uppercase mb-1 text-center">Stat Changes</p>
+                                     {renderComparison(mainHandItem, newItem)}
+                                </div>
+                                <button 
+                                   onClick={() => onLootAction('equip', 'MainHand')}
+                                   disabled={!canSwapDefault && !!mainHandItem} 
+                                   className="w-full mt-2 px-2 py-1.5 bg-cyan-700 text-white font-bold text-xs rounded hover:bg-cyan-600 transition-colors disabled:bg-slate-700 disabled:text-slate-500"
+                                >
+                                    Replace Main Hand
+                                </button>
                              </div>
 
-                             {/* Choice B: Off Hand */}
                              <div className="bg-slate-900/50 border border-slate-700 rounded-lg p-2">
-                                <ItemCard title="Off Hand (Current)" item={offHandItem} compact />
-                                <div className="mt-1 border-t border-slate-700 pt-1 grid grid-cols-2 gap-x-2">
-                                    <div className="col-span-2 mb-1">
-                                         {renderComparison(offHandItem, newItem)}
-                                     </div>
-                                     <button 
-                                        onClick={() => onLootAction('equip', 'OffHand')}
-                                        disabled={!canSwapDefault && !!offHandItem}
-                                        className="col-span-2 px-2 py-1 bg-cyan-700 text-white font-bold text-xs rounded hover:bg-cyan-600 transition-colors disabled:bg-slate-700 disabled:text-slate-500"
-                                     >
-                                         {offHandItem ? 'Replace Off Hand' : 'Equip to Off Hand'}
-                                     </button>
+                                <div className="flex gap-2 mb-2">
+                                    <div className="flex-1"><ItemCard title="New Item" item={newItem} compact showStats={false} /></div>
+                                    <div className="flex-1"><ItemCard title="Off Hand" item={offHandItem} compact showStats={false} /></div>
                                 </div>
+                                <div className="mt-1 border-t border-slate-700 pt-2">
+                                     <p className="text-[10px] font-bold text-slate-500 uppercase mb-1 text-center">Stat Changes</p>
+                                     {renderComparison(offHandItem, newItem)}
+                                </div>
+                                <button 
+                                   onClick={() => onLootAction('equip', 'OffHand')}
+                                   disabled={!canSwapDefault && !!offHandItem}
+                                   className="w-full mt-2 px-2 py-1.5 bg-cyan-700 text-white font-bold text-xs rounded hover:bg-cyan-600 transition-colors disabled:bg-slate-700 disabled:text-slate-500"
+                                >
+                                    {offHandItem ? 'Replace Off Hand' : 'Equip to Off Hand'}
+                                </button>
                              </div>
                         </div>
                     ) : (
-                        // Standard Comparison View
-                        <div className="flex flex-col gap-2 mb-2">
-                            <ItemCard title="Equipped" item={oldItem} />
-                            <div className="bg-slate-900/80 border border-slate-700 rounded-lg p-2 w-full">
-                                <h4 className="text-xs font-bold text-slate-400 border-b border-slate-700 pb-1 mb-1.5">Stat Changes</h4>
-                                <div className="flex flex-col gap-1">
-                                    {renderComparison(oldItem, newItem)}
-                                </div>
+                        <div className="flex flex-col gap-2 mb-1">
+                            <div className="flex gap-2 h-full">
+                                <div className="flex-1"><ItemCard title="New Item" item={newItem} compact showStats={false} /></div>
+                                <div className="flex-1"><ItemCard title="Equipped" item={oldItem} compact showStats={false} /></div>
+                            </div>
+                            <div className="bg-slate-900/60 border border-slate-700 rounded-lg p-2 w-full mt-1">
+                                <h4 className="text-xs font-bold text-slate-400 border-b border-slate-700 pb-1 mb-2 text-center uppercase tracking-widest">Stat Changes</h4>
+                                {renderComparison(oldItem, newItem)}
                             </div>
                         </div>
                     )}
                 </div>
                 
-                {/* Warnings & Common Actions */}
-                <div className="mt-2 flex-shrink-0">
+                <div className="mt-3 flex-shrink-0 pt-2 border-t border-slate-700/50">
                     {isBagFull && canSwapDefault && (
                         !canSwapDefault && <p className="text-[10px] text-red-400 font-bold text-center mb-2">Inventory Full! Cannot swap current item.</p>
                     )}
@@ -264,22 +254,22 @@ const LootDecision: React.FC<{
                             <button 
                                 onClick={() => onLootAction('equip')}
                                 disabled={!canEquipDefault}
-                                className="w-full px-2 py-1.5 bg-cyan-700 text-white font-bold text-sm rounded-lg hover:bg-cyan-600 transition-colors disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed"
+                                className="w-full px-2 py-2 bg-cyan-700 text-white font-bold text-sm rounded-lg hover:bg-cyan-600 transition-colors disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed shadow-md"
                             >Equip</button>
                         )}
-                        {showDualChoice && <div className="hidden"></div> /* Spacer if dual choice is active, equip buttons are above */}
+                        {showDualChoice && <div className="hidden"></div>}
                         
                         <button 
                             onClick={() => onLootAction('take')}
                             disabled={isBagFull}
-                            className={`w-full px-2 py-1.5 bg-green-600 text-white font-bold text-sm rounded-lg hover:bg-green-500 transition-colors disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed ${showDualChoice ? 'col-span-1' : ''}`}
+                            className={`w-full px-2 py-2 bg-green-600 text-white font-bold text-sm rounded-lg hover:bg-green-500 transition-colors disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed shadow-md ${showDualChoice ? 'col-span-1' : ''}`}
                         >Take</button>
                         <button 
                             onClick={() => onLootAction('sell')}
-                            className={`w-full px-2 py-1.5 bg-purple-700 text-white font-bold text-sm rounded-lg hover:bg-purple-600 transition-colors flex items-center justify-center gap-1 ${showDualChoice ? 'col-span-1' : ''}`}
+                            className={`w-full px-2 py-2 bg-purple-700 text-white font-bold text-sm rounded-lg hover:bg-purple-600 transition-colors flex items-center justify-center gap-1 shadow-md ${showDualChoice ? 'col-span-1' : ''}`}
                         >
                             <span>Sell</span>
-                            <span className="text-[9px] bg-black/30 px-1 rounded text-purple-200">{sellValue}</span>
+                            <span className="text-[10px] bg-black/30 px-1.5 py-0.5 rounded text-purple-200">{sellValue}</span>
                         </button>
                     </div>
                 </div>
@@ -306,40 +296,95 @@ const FloatingText: React.FC<{ data: FloatingTextData | null }> = ({ data }) => 
     );
 };
 
+// --- Hotbar Skill Button ---
+const SkillHotbarButton: React.FC<{ 
+    skill: Skill; 
+    level: number; 
+    cooldown: number; 
+    playerResource: number; 
+    onUse: () => void 
+}> = ({ skill, level, cooldown, playerResource, onUse }) => {
+    const isReady = cooldown === 0;
+    const canAfford = playerResource >= skill.cost;
+    const isUsable = isReady && canAfford && level > 0;
+    const cooldownPercent = skill.cooldown ? (cooldown / skill.cooldown) * 100 : 0;
+
+    const iconUrl = `https://api.iconify.design/game-icons/${skill.icon}.svg?color=${isUsable ? '%23facc15' : '%23475569'}`;
+
+    return (
+        <button 
+            onClick={onUse}
+            disabled={!isUsable}
+            className={`relative w-12 h-12 md:w-14 md:h-14 rounded-lg border-2 transition-all duration-200 overflow-hidden flex items-center justify-center bg-slate-900 group ${
+                isUsable 
+                ? 'border-yellow-500 shadow-[0_0_10px_rgba(234,179,8,0.3)] hover:scale-105 active:scale-95' 
+                : 'border-slate-700 opacity-80 cursor-not-allowed'
+            }`}
+        >
+            <img src={iconUrl} alt={skill.name} className={`w-3/4 h-3/4 object-contain ${!isUsable && 'grayscale'}`} />
+            
+            {/* Cooldown Radial Sweep Overlay */}
+            {!isReady && (
+                <div 
+                    className="absolute inset-0 bg-black/60 flex items-center justify-center pointer-events-none"
+                    style={{ 
+                        clipPath: `inset(${100 - cooldownPercent}% 0 0 0)` 
+                    }}
+                ></div>
+            )}
+
+            {/* Cooldown Number Overlay */}
+            {!isReady && (
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    <span className="text-lg font-black text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">{cooldown}</span>
+                </div>
+            )}
+
+            {/* Resource Cost Indicator */}
+            <div className="absolute top-0 right-0 bg-slate-950/80 px-1 rounded-bl-md border-l border-b border-slate-700 pointer-events-none">
+                 <span className={`text-[8px] font-bold ${canAfford ? 'text-cyan-300' : 'text-red-400'}`}>{skill.cost}</span>
+            </div>
+
+            {/* Tooltip on Hover */}
+            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 invisible group-hover:visible bg-slate-900 border border-slate-700 rounded-md p-2 w-32 shadow-2xl z-[100] text-left">
+                <p className="text-[10px] font-bold text-yellow-400">{skill.name} <span className="text-slate-500">Lv.{level}</span></p>
+                <p className="text-[9px] text-slate-300 leading-tight mt-1">{skill.description}</p>
+                <p className="text-[8px] text-slate-500 mt-1">Cost: {skill.cost} CD: {skill.cooldown}s</p>
+            </div>
+        </button>
+    );
+};
+
 // --- Main Combat Screen ---
 
-const CombatScreen: React.FC<CombatScreenProps> = ({ player, runState, logs, onToggleAutoCombat, onFlee, onLootAction, onUsePotion }) => {
+const CombatScreen: React.FC<CombatScreenProps> = ({ player, runState, logs, onToggleAutoCombat, onFlee, onLootAction, onUsePotion, onUseSkill }) => {
   const logContainerRef = useRef<HTMLDivElement>(null);
-  
-  // Animation States
-  const [showFlash, setShowFlash] = useState(false); // Controls impact visual
-
+  const [showFlash, setShowFlash] = useState(false); 
   const prevLogLengthRef = useRef(0);
-  
-  // Floating Text States (using object with ID to force re-render on same text)
   const [playerFloatingText, setPlayerFloatingText] = useState<FloatingTextData | null>(null);
   const [enemyFloatingText, setEnemyFloatingText] = useState<FloatingTextData | null>(null);
-  
-  // Refs to manage timeouts preventing race conditions clearing text too early
   const playerTextTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const enemyTextTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const playerDead = runState.playerCurrentHpInRun <= 0;
-  
-  // Derived Loot State for Multiple Items
   const currentLootItem = runState.pendingLoot && runState.pendingLoot.length > 0 ? runState.pendingLoot[0] : null;
   const isLootPending = currentLootItem !== null;
   const itemsRemaining = runState.pendingLoot.length;
 
   const enemyDefeated = runState.currentEnemy.stats.hp <= 0;
   const isPostCombatPhase = isLootPending || enemyDefeated;
-  
   const currentlyEquipped = currentLootItem ? (player.equipment[currentLootItem.slot] ?? null) : null;
   const isAuto = runState.isAutoBattling;
 
-  // Trigger sword animation and floating text on new log entry
+  const isMage = player.classInfo.name === 'Mage';
+  const resourceCurrent = isMage ? runState.playerCurrentManaInRun : runState.playerCurrentEnergyInRun;
+  const resourceMax = isMage ? player.currentStats.maxMana : player.currentStats.maxEnergy;
+  const resourceLabel = isMage ? 'Mana' : 'Energy';
+  const resourceColor = isMage ? 'bg-blue-600' : 'bg-yellow-500';
+
+  const activeSkills = (SKILL_TREES[player.classInfo.name] || []).filter(s => s.type === 'active');
+
   useEffect(() => {
-    // Reset ref if logs are cleared (new fight)
     if (logs.length === 0) {
         prevLogLengthRef.current = 0;
         return;
@@ -347,8 +392,6 @@ const CombatScreen: React.FC<CombatScreenProps> = ({ player, runState, logs, onT
 
     if (logs.length > prevLogLengthRef.current) {
         const newLogs = logs.slice(prevLogLengthRef.current);
-        
-        // Only trigger flash if actual combat events occurred
         const isCombatEvent = newLogs.some(log => 
             log.message.includes("hit") || 
             log.message.includes("dodged") || 
@@ -361,14 +404,11 @@ const CombatScreen: React.FC<CombatScreenProps> = ({ player, runState, logs, onT
              setShowFlash(true);
              const cleanupTimer = setTimeout(() => {
                 setShowFlash(false);
-            }, 100); // Shorter duration for impact
+            }, 100); 
         }
 
-        // Analyze new logs for floating text
         newLogs.forEach((log, index) => {
-            const id = Date.now() + index; // Unique ID per event
-            
-            // Player Events (Defensive)
+            const id = Date.now() + index; 
             if (log.message.includes("You dodged")) {
                 if (playerTextTimeoutRef.current) clearTimeout(playerTextTimeoutRef.current);
                 setPlayerFloatingText({ id, text: "DODGE!", color: "text-blue-400" });
@@ -379,18 +419,20 @@ const CombatScreen: React.FC<CombatScreenProps> = ({ player, runState, logs, onT
                 setPlayerFloatingText({ id, text: "BLOCK!", color: "text-cyan-400" });
                 playerTextTimeoutRef.current = setTimeout(() => setPlayerFloatingText(null), 1000);
             }
-
-            // Enemy Events (Offensive) - "You hit the [Enemy] ... (CRIT!)"
             if (log.message.includes("(CRIT!)")) {
                 if (enemyTextTimeoutRef.current) clearTimeout(enemyTextTimeoutRef.current);
                 setEnemyFloatingText({ id, text: "CRIT!", color: "text-red-500 text-xl md:text-2xl" });
                 enemyTextTimeoutRef.current = setTimeout(() => setEnemyFloatingText(null), 1000);
             }
-            // Enemy Dodge - "The [Enemy] dodged"
             if (log.message.includes("dodged your attack")) {
                 if (enemyTextTimeoutRef.current) clearTimeout(enemyTextTimeoutRef.current);
                 setEnemyFloatingText({ id, text: "DODGE!", color: "text-blue-400" });
                 enemyTextTimeoutRef.current = setTimeout(() => setEnemyFloatingText(null), 1000);
+            }
+            if (log.message.includes("[SKILL]")) {
+                 if (enemyTextTimeoutRef.current) clearTimeout(enemyTextTimeoutRef.current);
+                 setEnemyFloatingText({ id, text: "SKILL!", color: "text-yellow-400 animate-pulse" });
+                 enemyTextTimeoutRef.current = setTimeout(() => setEnemyFloatingText(null), 1000);
             }
         });
 
@@ -417,8 +459,7 @@ const CombatScreen: React.FC<CombatScreenProps> = ({ player, runState, logs, onT
            />
         )}
         
-        {/* 1. HEADER (Intact) */}
-        <div className="bg-slate-800 border border-slate-700 rounded-xl p-2 shadow-lg text-center flex-shrink-0">
+        <div className="bg-slate-900/80 backdrop-blur-sm border border-slate-700 rounded-xl p-2 shadow-lg text-center flex-shrink-0">
           <h2 className="text-base font-bold text-[#D6721C]">Floor {runState.floor}</h2>
           <div className="flex justify-center gap-3 text-xs text-slate-400">
              <span>Acc Lvl: <span className="text-slate-200 font-bold">{player.level}</span></span>
@@ -427,45 +468,60 @@ const CombatScreen: React.FC<CombatScreenProps> = ({ player, runState, logs, onT
           </div>
         </div>
 
-        {/* 2. PLAYER STATS PANEL */}
-        <div className="bg-slate-800 border border-slate-700 rounded-xl p-2 shadow-lg flex-shrink-0">
+        {/* Stats Row */}
+        <div className="bg-slate-900/80 backdrop-blur-sm border border-slate-700 rounded-xl p-2 shadow-lg flex-shrink-0">
             <h3 className="text-xs font-bold text-[#D6721C] border-b border-slate-700 pb-1 mb-2 text-center uppercase tracking-widest">Player Stats</h3>
             <div className="grid grid-cols-4 gap-2">
                 <CombatStatDisplay label="STR" value={player.currentStats.str} color="text-red-400" />
                 <CombatStatDisplay label="DEX" value={player.currentStats.dex} color="text-green-400" />
                 <CombatStatDisplay label="INT" value={player.currentStats.int} color="text-blue-400" />
                 <CombatStatDisplay label="DEF" value={player.currentStats.defense} />
-                
                 <CombatStatDisplay label="CRIT" value={`${player.currentStats.critRate}%`} />
                 <CombatStatDisplay label="EVA" value={`${player.currentStats.evasion}%`} />
-                <CombatStatDisplay label="BLOCK" value={`${player.currentStats.blockChance}%`} color="text-cyan-400" />
-                <CombatStatDisplay label="VAMP" value={`${player.currentStats.lifesteal}%`} color="text-pink-400" />
+                {isMage ? (
+                    <>
+                        <CombatStatDisplay label="CSPD" value={`${player.currentStats.castSpeed}%`} color="text-indigo-400" />
+                        <CombatStatDisplay label="LS" value={`${player.currentStats.lifesteal}%`} color="text-pink-400" />
+                    </>
+                ) : (
+                    <>
+                        <CombatStatDisplay label="ASPD" value={`${player.currentStats.attackSpeed}%`} color="text-yellow-400" />
+                        <CombatStatDisplay label="LS" value={`${player.currentStats.lifesteal}%`} color="text-pink-400" />
+                    </>
+                )}
             </div>
         </div>
 
-        {/* 3. THE ARENA (Player VS Enemy) */}
-        <div className="bg-slate-800 border border-slate-700 rounded-xl p-3 shadow-lg flex-shrink-0">
+        {/* Combat Visualization */}
+        <div className="bg-slate-900/80 backdrop-blur-sm border border-slate-700 rounded-xl p-3 shadow-lg flex-shrink-0">
             <div className="flex items-center justify-between">
                 
-                {/* Left: PLAYER */}
-                <div className="flex flex-col items-center w-24 relative">
-                     {/* Floating Text Overlay */}
+                <div className="flex flex-col items-center w-24 relative gap-1">
                      <FloatingText data={playerFloatingText} />
-                     
-                     <div className="w-14 h-14 bg-slate-900/50 border-2 border-slate-600 rounded-lg p-1 mb-2 shadow-md">
+                     <div className="w-14 h-14 bg-slate-900/50 border-2 border-slate-600 rounded-lg p-1 shadow-md">
                         {player.classInfo.icon.startsWith('http') ? (
                             <img src={player.classInfo.icon} alt={player.classInfo.name} className="w-full h-full object-contain" />
                         ) : (
                             <span className="text-3xl flex items-center justify-center h-full">{player.classInfo.icon}</span>
                         )}
                      </div>
-                     <span className="text-xs font-bold text-slate-200 mb-1 truncate w-full text-center">{player.name}</span>
-                     <HealthBar current={runState.playerCurrentHpInRun} max={player.currentStats.maxHp} showLabel={false} />
+                     <span className="text-xs font-bold text-slate-200 truncate w-full text-center leading-none">{player.name}</span>
+                     
+                     <div className="w-full space-y-1 mt-1">
+                        <HealthBar current={runState.playerCurrentHpInRun} max={player.currentStats.maxHp} showLabel={false} />
+                        <div className="w-full bg-slate-900 rounded-full h-2 border border-slate-700 overflow-hidden relative shadow-inner">
+                            <div
+                                className={`h-full transition-all duration-300 ${resourceColor}`}
+                                style={{ width: `${(resourceCurrent / (resourceMax || 1)) * 100}%` }}
+                            ></div>
+                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                <span className="text-[7px] font-bold text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)] leading-none">{resourceCurrent}/{resourceMax}</span>
+                            </div>
+                        </div>
+                     </div>
                 </div>
 
-                {/* Center: BATTLE ANIMATION */}
                 <div className="flex-1 flex items-center justify-center relative h-full w-full">
-                     {/* Fixed Crossed Swords Icon */}
                      <div className={`z-10 opacity-80 transition-transform duration-100 ${showFlash ? 'scale-125' : 'scale-100'}`}>
                         <img 
                             src={`https://api.iconify.design/game-icons/crossed-swords.svg?color=%23e2e8f0`} 
@@ -475,18 +531,14 @@ const CombatScreen: React.FC<CombatScreenProps> = ({ player, runState, logs, onT
                      </div>
                 </div>
 
-                {/* Right: ENEMY */}
                 <div className="flex flex-col items-center w-24 relative">
-                     {/* Floating Text Overlay */}
                      <FloatingText data={enemyFloatingText} />
-
                      <div className="relative w-14 h-14 bg-slate-900/50 border-2 border-red-900/50 rounded-lg p-1 mb-2 shadow-md">
                         {runState.currentEnemy.icon.startsWith('http') ? (
                             <img src={runState.currentEnemy.icon} alt={runState.currentEnemy.name} className="w-full h-full object-contain" />
                         ) : (
                              <span className="text-3xl flex items-center justify-center h-full">{runState.currentEnemy.icon}</span>
                         )}
-                        {/* Enemy Stats Hover/Tooltip */}
                         <div className="absolute -bottom-2 -right-2 bg-slate-900 border border-slate-600 rounded px-1 z-10">
                              <span className="text-[8px] font-bold text-red-400">ATK {runState.currentEnemy.stats.attack}</span>
                         </div>
@@ -496,12 +548,34 @@ const CombatScreen: React.FC<CombatScreenProps> = ({ player, runState, logs, onT
                      </span>
                      <HealthBar current={runState.currentEnemy.stats.hp} max={runState.currentEnemy.stats.maxHp} showLabel={false} />
                 </div>
-
             </div>
         </div>
 
-        {/* 4. COMBAT LOG (Intact placement) */}
-        <div className="bg-slate-800 border border-slate-700 rounded-xl p-2 shadow-lg flex-1 min-h-0 flex flex-col md:max-h-[30vh] lg:max-h-[40vh]">
+        {/* Manual Skill Hotbar */}
+        <div className="bg-slate-900/90 backdrop-blur-md border-2 border-slate-700/80 rounded-xl p-2 shadow-2xl flex-shrink-0 z-20">
+            <div className="flex justify-center items-center gap-4">
+                {activeSkills.map(skill => {
+                    const level = player.skills[skill.id] || 0;
+                    if (level <= 0) return null; // Only show unlocked skills
+                    return (
+                        <SkillHotbarButton 
+                            key={skill.id}
+                            skill={skill}
+                            level={level}
+                            cooldown={runState.skillCooldowns[skill.id] || 0}
+                            playerResource={resourceCurrent}
+                            onUse={() => onUseSkill(skill.id)}
+                        />
+                    );
+                })}
+                {activeSkills.every(s => (player.skills[s.id] || 0) === 0) && (
+                    <p className="text-[10px] text-slate-500 italic py-2">Unlock Active Skills in the Skill Tree to use them here.</p>
+                )}
+            </div>
+        </div>
+
+        {/* Combat Log */}
+        <div className="bg-slate-900/80 backdrop-blur-sm border border-slate-700 rounded-xl p-2 shadow-lg flex-1 min-h-0 flex flex-col md:max-h-[30vh] lg:max-h-[40vh]">
           <h3 className="text-xs font-bold text-slate-300 mb-1 border-b border-slate-700 pb-1 flex-shrink-0">Combat Log</h3>
           <div ref={logContainerRef} className="flex-grow overflow-y-auto pr-2 no-scrollbar">
             {logs.map((log) => (
@@ -515,7 +589,7 @@ const CombatScreen: React.FC<CombatScreenProps> = ({ player, runState, logs, onT
           </div>
         </div>
 
-        {/* 5. ACTION BUTTONS (Intact placement) */}
+        {/* Controls */}
         <div className="grid grid-cols-3 gap-2 flex-shrink-0 mt-auto">
           <button
             onClick={onToggleAutoCombat}
@@ -523,22 +597,22 @@ const CombatScreen: React.FC<CombatScreenProps> = ({ player, runState, logs, onT
             className={`w-full px-4 py-3 font-bold text-sm rounded-lg shadow-md transition-all duration-300 focus:outline-none focus:ring-2 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed ${
                 isAuto 
                 ? 'bg-red-900/80 text-red-200 hover:bg-red-800 border border-red-700 focus:ring-red-500' 
-                : 'bg-green-700 text-white hover:bg-green-600 focus:ring-green-500 animate-pulse'
+                : 'bg-green-700/90 text-white hover:bg-green-600 focus:ring-green-500 animate-pulse backdrop-blur-sm'
             }`}
           >
-            {isAuto ? 'Stop' : 'FIGHT!'}
+            {isAuto ? 'Stop' : 'AUTO-FIGHT'}
           </button>
           <button
             onClick={onUsePotion}
             disabled={playerDead || isPostCombatPhase || player.potionCount <= 0 || runState.playerCurrentHpInRun >= player.currentStats.maxHp}
-            className="w-full px-4 py-3 bg-blue-700 text-white font-bold text-sm rounded-lg shadow-md hover:bg-blue-600 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed"
+            className="w-full px-4 py-3 bg-blue-700/90 text-white font-bold text-sm rounded-lg shadow-md hover:bg-blue-600 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed backdrop-blur-sm"
           >
             Potion ({player.potionCount})
           </button>
           <button
             onClick={onFlee}
             disabled={playerDead || isPostCombatPhase}
-            className="w-full px-4 py-3 bg-slate-600 text-slate-200 font-bold text-sm rounded-lg shadow-md hover:bg-slate-500 transition-colors focus:outline-none focus:ring-2 focus:ring-slate-400 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed"
+            className="w-full px-4 py-3 bg-slate-600/90 text-slate-200 font-bold text-sm rounded-lg shadow-md hover:bg-slate-500 transition-colors focus:outline-none focus:ring-2 focus:ring-slate-400 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed backdrop-blur-sm"
           >
             Flee
           </button>

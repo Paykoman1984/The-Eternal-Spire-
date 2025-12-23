@@ -53,7 +53,7 @@ const AchievementCard: React.FC<{
     };
 
     return (
-        <div className="bg-slate-900/70 border border-slate-700 rounded-lg p-2 flex flex-col">
+        <div className="bg-slate-900/60 border border-slate-700/50 rounded-lg p-2 flex flex-col">
             <div>
                 <h4 className="font-bold text-sm text-[#D6721C]">{achievement.title}</h4>
                 <p className="text-xs text-slate-400 mt-0.5 mb-1.5">{achievement.description}</p>
@@ -88,7 +88,7 @@ const AchievementsScreen: React.FC<AchievementsScreenProps> = ({ player, achieve
 
     return (
         <div className="animate-fadeIn flex flex-col items-center justify-center h-full p-4">
-            <div className="bg-slate-800 border border-slate-700 rounded-xl p-3 shadow-lg w-full max-w-2xl flex flex-col max-h-[90vh]">
+            <div className="bg-slate-900/80 backdrop-blur-sm border border-slate-700 rounded-xl p-3 shadow-lg w-full max-w-2xl flex flex-col max-h-[90vh]">
                 <div className="flex justify-between items-center border-b-2 border-slate-700 pb-1.5 mb-2">
                     <h2 className="text-lg font-bold text-[#D6721C]">Achievements</h2>
                 </div>
@@ -111,7 +111,7 @@ const AchievementsScreen: React.FC<AchievementsScreenProps> = ({ player, achieve
                 <div className="mt-3 text-center">
                      <button
                         onClick={onExit}
-                        className="px-5 py-1.5 bg-slate-600 text-slate-200 font-bold text-sm rounded-lg hover:bg-slate-500 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-slate-400"
+                        className="px-5 py-1.5 bg-slate-600/90 text-slate-200 font-bold text-sm rounded-lg hover:bg-slate-500 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-slate-400 backdrop-blur-sm"
                     >
                         Return
                     </button>

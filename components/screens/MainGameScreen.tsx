@@ -10,6 +10,7 @@ interface MainGameScreenProps {
   onEnterShop: () => void;
   onEnterAchievements: () => void;
   onEnterStats: () => void;
+  onEnterSkills: () => void;
   onEquipFromBag: (index: number) => void;
   onSellFromBag: (index: number) => void;
   onDisenchantFromBag: (index: number) => void;
@@ -40,15 +41,15 @@ const useLongPress = (onLongPress: () => void, onClick: () => void, options = { 
     const [startLongPress, setStartLongPress] = useState(false);
     const timeout = useRef<ReturnType<typeof setTimeout> | null>(null);
     const targetRef = useRef<EventTarget | null>(null);
-    const isLongPressTriggered = useRef(false); // Track if long press actually fired
+    const isLongPressTriggered = useRef(false); 
 
     const start = useCallback((event: React.MouseEvent | React.TouchEvent) => {
         setStartLongPress(true);
-        isLongPressTriggered.current = false; // Reset trigger state
+        isLongPressTriggered.current = false; 
         targetRef.current = event.target;
         timeout.current = setTimeout(() => {
             onLongPress();
-            isLongPressTriggered.current = true; // Mark as triggered so we don't click later
+            isLongPressTriggered.current = true; 
         }, options.delay);
     }, [onLongPress, options.delay]);
 
@@ -59,7 +60,6 @@ const useLongPress = (onLongPress: () => void, onClick: () => void, options = { 
         }
         setStartLongPress(false);
         
-        // Only trigger click if we meant to click AND long press didn't happen
         if (shouldTriggerClick && startLongPress && !isLongPressTriggered.current && targetRef.current === event.target) {
             onClick();
         }
@@ -70,7 +70,7 @@ const useLongPress = (onLongPress: () => void, onClick: () => void, options = { 
         onMouseDown: (e: React.MouseEvent) => start(e),
         onTouchStart: (e: React.TouchEvent) => start(e),
         onMouseUp: (e: React.MouseEvent) => clear(e, true),
-        onMouseLeave: (e: React.MouseEvent) => clear(e, false), // Cancel click if leaving
+        onMouseLeave: (e: React.MouseEvent) => clear(e, false), 
         onTouchEnd: (e: React.TouchEvent) => clear(e, true),
     };
 };
@@ -86,7 +86,6 @@ const EquipmentSlotDisplay: React.FC<{
     
     let tooltipPositionClass = "bottom-full left-1/2 -translate-x-1/2 mb-2"; 
     
-    // Adjust tooltips based on slot position in the vertical paper doll
     if (['Helmet', 'Armor', 'Gloves', 'Boots'].includes(slot)) {
         tooltipPositionClass = "left-full top-1/2 -translate-y-1/2 ml-2";
     }
@@ -101,7 +100,6 @@ const EquipmentSlotDisplay: React.FC<{
     };
 
     const handleClick = () => {
-        // Hide tooltip on click (if it was somehow open)
         setActiveTooltipSlot(null);
         if (item && onUnequip && !isGhost) {
             onUnequip();
@@ -163,8 +161,8 @@ const EquipmentSlotDisplay: React.FC<{
     const containerClass = isGhost 
         ? `${slotSizeClass} bg-slate-800/40 border-2 border-slate-600/50 rounded-lg flex flex-col items-center justify-center p-1 text-center shadow-md grayscale opacity-50`
         : item 
-            ? `${slotSizeClass} bg-slate-800 border-2 border-slate-600 rounded-lg flex flex-col items-center justify-center p-1 text-center shadow-md cursor-pointer select-none`
-            : `${slotSizeClass} bg-slate-900/40 border-2 border-dashed border-slate-700 rounded-lg flex flex-col items-center justify-center p-0.5 text-center hover:border-[#D6721C] hover:bg-slate-800/50 transition-colors duration-300`;
+            ? `${slotSizeClass} bg-slate-900/60 border-2 border-slate-600 rounded-lg flex flex-col items-center justify-center p-1 text-center shadow-md cursor-pointer select-none`
+            : `${slotSizeClass} bg-slate-900/30 border-2 border-dashed border-slate-700 rounded-lg flex flex-col items-center justify-center p-0.5 text-center hover:border-[#D6721C] hover:bg-slate-800/50 transition-colors duration-300`;
 
     return (
         <div 
@@ -172,7 +170,7 @@ const EquipmentSlotDisplay: React.FC<{
             onMouseEnter={item && !isGhost ? handleMouseEnter : undefined}
             onMouseLeave={item && !isGhost ? handleMouseLeave : undefined}
             {...(item && !isGhost ? { onMouseDown, onTouchStart, onMouseUp, onTouchEnd } : {})}
-            onContextMenu={(e) => e.preventDefault()} // Disable right click menu
+            onContextMenu={(e) => e.preventDefault()} 
         >
             <div className={containerClass}>
                     {item ? (
@@ -182,7 +180,7 @@ const EquipmentSlotDisplay: React.FC<{
                             <p className="text-2xl drop-shadow-md pointer-events-none">{item.icon}</p>
                         )
                     ) : (
-                        <p className="text-[5px] md:text-[6px] leading-tight text-slate-600 uppercase font-bold tracking-wider break-words w-full pointer-events-none">{slot}</p>
+                        <p className="text-[5px] md:text-[6px] leading-tight text-slate-500 uppercase font-bold tracking-wider break-words w-full pointer-events-none">{slot}</p>
                     )}
             </div>
             {renderTooltip()}
@@ -200,8 +198,8 @@ interface BagItemDisplay {
     stats?: Partial<Stats>;
     itemLevel?: number;
     onClick?: () => void;
-    cost?: number; // Added for sell logic
-    dustValue?: number; // Added for disenchant logic
+    cost?: number; 
+    dustValue?: number; 
 }
 
 const BagSlot: React.FC<{ 
@@ -212,7 +210,6 @@ const BagSlot: React.FC<{
     bagMode: BagMode;
 }> = ({ item, index, activeTooltipId, setActiveTooltipId, bagMode }) => {
     
-    // Dynamic Tooltip Position
     const col = index % 8;
     const tooltipPosition = col < 4 
         ? "left-full top-1/2 -translate-y-1/2 ml-2" 
@@ -250,14 +247,14 @@ const BagSlot: React.FC<{
 
     const sellValue = item?.cost ? Math.floor(item.cost * 0.2) : 0;
 
-    let slotClass = 'bg-slate-900/40 border-slate-700';
+    let slotClass = 'bg-slate-900/40 border-slate-700/50';
     if (item) {
         if (bagMode === 'sell') {
-            slotClass = 'bg-red-900/30 border-red-500 cursor-alias';
+            slotClass = 'bg-red-900/30 border-red-500/80 cursor-alias';
         } else if (bagMode === 'disenchant') {
-             slotClass = 'bg-cyan-900/30 border-cyan-500 cursor-alias';
+             slotClass = 'bg-cyan-900/30 border-cyan-500/80 cursor-alias';
         } else {
-             slotClass = 'bg-slate-800 border-slate-600 cursor-pointer';
+             slotClass = 'bg-slate-800/80 border-slate-600/80 cursor-pointer';
         }
     }
 
@@ -283,20 +280,17 @@ const BagSlot: React.FC<{
                             x{item.count}
                         </span>
                     )}
-                    {/* Sell Mode Icon Overlay */}
                     {bagMode === 'sell' && item.count === undefined && (
                          <div className="absolute top-0 right-0 p-0.5 bg-red-600 rounded-bl-md pointer-events-none">
                              <span className="text-[8px] font-bold text-white">$</span>
                          </div>
                     )}
-                    {/* Disenchant Mode Icon Overlay */}
                      {bagMode === 'disenchant' && item.count === undefined && (
                          <div className="absolute top-0 right-0 p-0.5 bg-cyan-600 rounded-bl-md pointer-events-none">
                              <span className="text-[8px] font-bold text-white">✨</span>
                          </div>
                     )}
                     
-                    {/* Tooltip */}
                     {isActive && (
                         <div className={`absolute ${tooltipPosition} w-32 md:w-40 whitespace-normal break-words bg-slate-900 border-2 border-[#D6721C] rounded-lg shadow-2xl shadow-black p-2 text-xs z-[9999] pointer-events-none text-left`}>
                             <div className="flex justify-between items-baseline mb-1">
@@ -333,20 +327,18 @@ const BagSlot: React.FC<{
 };
 
 
-const MainGameScreen: React.FC<MainGameScreenProps> = ({ player, onExitToProfiles, onEnterSpire, onEnterShop, onEnterAchievements, onEnterStats, onEquipFromBag, onSellFromBag, onDisenchantFromBag, onUnequip }) => {
+const MainGameScreen: React.FC<MainGameScreenProps> = ({ player, onExitToProfiles, onEnterSpire, onEnterShop, onEnterAchievements, onEnterStats, onEnterSkills, onEquipFromBag, onSellFromBag, onDisenchantFromBag, onUnequip }) => {
   const [showOptions, setShowOptions] = useState(false);
   const [activeTooltipId, setActiveTooltipId] = useState<string | null>(null);
   const [activeEquipTooltipSlot, setActiveEquipTooltipSlot] = useState<string | null>(null);
   const [bagMode, setBagMode] = useState<BagMode>('equip');
-  const [isProcessingAction, setIsProcessingAction] = useState(false); // Throttle state
+  const [isProcessingAction, setIsProcessingAction] = useState(false); 
 
   const xpPercentage = (player.xp / player.xpToNextLevel) * 100;
-  
   const mainHandItem = player.equipment.MainHand;
   const isTwoHandedEquipped = mainHandItem?.isTwoHanded;
   const buffs = player.accountBuffs || {};
 
-  // Action throttler to prevent race conditions or double taps
   const handleBagAction = (action: () => void) => {
       if (isProcessingAction) return;
       setIsProcessingAction(true);
@@ -354,10 +346,7 @@ const MainGameScreen: React.FC<MainGameScreenProps> = ({ player, onExitToProfile
       setTimeout(() => setIsProcessingAction(false), 300);
   };
 
-  // Build Bag Items List
   const bagItemsDisplay: BagItemDisplay[] = [];
-  
-  // 1. Potions (Always first if exists)
   if (player.potionCount > 0) {
       bagItemsDisplay.push({
           id: 'potion',
@@ -366,13 +355,11 @@ const MainGameScreen: React.FC<MainGameScreenProps> = ({ player, onExitToProfile
           count: player.potionCount,
           description: 'Restores 50 HP.',
           rarityColor: 'text-green-400',
-          onClick: () => {} // Potions can't be equipped or sold directly here
+          onClick: () => {} 
       });
   }
 
-  // 2. Inventory Items
   player.inventory.forEach((item, idx) => {
-      // Dust Calc
       const baseDust = {
           'Common': 1,
           'Uncommon': 3,
@@ -406,7 +393,6 @@ const MainGameScreen: React.FC<MainGameScreenProps> = ({ player, onExitToProfile
       });
   });
 
-  // Global touch end listener to hide tooltips if user lifts finger/mouse anywhere else
   useEffect(() => {
     const clearTooltips = () => {
         setActiveTooltipId(null);
@@ -433,19 +419,16 @@ const MainGameScreen: React.FC<MainGameScreenProps> = ({ player, onExitToProfile
   return (
     <div className="h-full w-full flex flex-col items-center p-3 max-w-md md:max-w-2xl mx-auto relative animate-fadeIn gap-2 select-none">
       
-      {/* Options Menu Modal */}
       {showOptions && (
           <div className="absolute inset-0 z-50 bg-black/80 flex items-center justify-center backdrop-blur-sm animate-fadeIn">
-              <div className="bg-slate-800 border-2 border-[#D6721C] rounded-xl p-6 w-64 shadow-2xl flex flex-col gap-3 text-center">
+              <div className="bg-slate-900/95 border-2 border-[#D6721C] rounded-xl p-6 w-64 shadow-2xl flex flex-col gap-3 text-center backdrop-blur-md">
                   <h2 className="text-xl font-bold text-[#D6721C] mb-2">Options</h2>
-                  
                   <button 
                     onClick={onExitToProfiles}
                     className="w-full px-4 py-2 bg-red-900/80 text-red-200 font-bold text-sm rounded-lg hover:bg-red-800 border border-red-700 transition-colors"
                   >
                     Return Character Selection
                   </button>
-                  
                   <button 
                     onClick={() => setShowOptions(false)}
                     className="w-full px-4 py-2 bg-slate-600 text-slate-200 font-bold text-sm rounded-lg hover:bg-slate-500 transition-colors mt-2"
@@ -456,8 +439,7 @@ const MainGameScreen: React.FC<MainGameScreenProps> = ({ player, onExitToProfile
           </div>
       )}
 
-      {/* TOP: Header (Identity & Resources) */}
-      <div className="w-full bg-slate-800 border border-slate-700 rounded-xl p-2 shadow-lg flex flex-col gap-1 relative overflow-hidden flex-shrink-0">
+      <div className="w-full bg-slate-900/80 backdrop-blur-sm border border-slate-700/50 rounded-xl p-2 shadow-lg flex flex-col gap-1 relative overflow-hidden flex-shrink-0">
         <div className="flex items-center justify-between z-10">
             <div className="flex items-center gap-2">
                 <div className="w-10 h-10 bg-slate-900/50 rounded-lg p-1 border border-slate-700 flex items-center justify-center">
@@ -484,7 +466,6 @@ const MainGameScreen: React.FC<MainGameScreenProps> = ({ player, onExitToProfile
             </div>
         </div>
         
-        {/* XP Bar */}
         <div className="relative w-full h-2.5 bg-slate-900 rounded-full border border-slate-700 overflow-hidden mt-1">
             <div 
                 className="bg-gradient-to-r from-[#D6721C] to-yellow-500 h-full rounded-full transition-all duration-500" 
@@ -496,11 +477,8 @@ const MainGameScreen: React.FC<MainGameScreenProps> = ({ player, onExitToProfile
         </div>
       </div>
 
-      {/* MIDDLE: Inventory & Stats - Force height constraints for tablet */}
       <div className="flex-1 w-full min-h-0 flex gap-2">
-        {/* Left Pane: Inventory (Paper Doll) */}
-        <div className="flex-[1.5] relative bg-slate-800 border border-slate-700 rounded-xl shadow-xl p-2 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-slate-700 to-slate-900">
-             
+        <div className="flex-[1.5] relative bg-slate-900/80 backdrop-blur-sm border border-slate-700/50 rounded-xl shadow-xl p-2">
              <div className="absolute top-2 left-2 z-0">
                 <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Inventory</h3>
              </div>
@@ -509,11 +487,9 @@ const MainGameScreen: React.FC<MainGameScreenProps> = ({ player, onExitToProfile
                 <p className="text-[8px] text-slate-600 italic">Hold/Hover for Info</p>
              </div>
 
-             {/* Centered container to prevent drift on tablet screens */}
              <div className="relative w-full max-w-[280px] h-full mx-auto">
-                {/* Detailed Silhouette Background - Scaled down slightly */}
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none mb-8">
-                    <svg viewBox="0 0 100 100" className="w-40 h-40 md:w-44 md:h-44 text-slate-900 drop-shadow-xl opacity-40">
+                    <svg viewBox="0 0 100 100" className="w-40 h-40 md:w-44 md:h-44 text-slate-500 drop-shadow-xl opacity-25">
                         <path d="M50 15 C56 15 60 20 60 26 C60 32 56 35 50 35 C44 35 40 32 40 26 C40 20 44 15 50 15 Z" fill="currentColor" />
                         <path d="M46 34 L54 34 L56 38 L44 38 Z" fill="currentColor" />
                         <path d="M38 38 L62 38 L65 55 L58 70 L42 70 L35 55 Z" fill="currentColor" />
@@ -526,7 +502,6 @@ const MainGameScreen: React.FC<MainGameScreenProps> = ({ player, onExitToProfile
                     </svg>
                 </div>
 
-                {/* Left Column: Armor Stack */}
                 <div className="absolute top-14 left-1 flex flex-col gap-1.5">
                     {(['Helmet', 'Armor', 'Gloves', 'Boots'] as GearSlot[]).map(slot => (
                         <EquipmentSlotDisplay 
@@ -540,7 +515,6 @@ const MainGameScreen: React.FC<MainGameScreenProps> = ({ player, onExitToProfile
                     ))}
                 </div>
 
-                {/* Right Column: Accessories Stack */}
                 <div className="absolute top-14 right-1 flex flex-col gap-1.5">
                     {(['Necklace', 'Earring', 'Ring', 'Belt'] as GearSlot[]).map(slot => (
                         <EquipmentSlotDisplay 
@@ -554,7 +528,6 @@ const MainGameScreen: React.FC<MainGameScreenProps> = ({ player, onExitToProfile
                     ))}
                 </div>
 
-                {/* Bottom Row (Weapons) */}
                 <div className="absolute bottom-[29px] right-[52%]">
                     <EquipmentSlotDisplay 
                         slot="MainHand" 
@@ -577,8 +550,7 @@ const MainGameScreen: React.FC<MainGameScreenProps> = ({ player, onExitToProfile
             </div>
         </div>
 
-        {/* Right Pane: Stats */}
-        <div className="flex-1 bg-slate-900/80 border border-slate-700 rounded-xl p-2 flex flex-col gap-1 justify-center min-w-[120px]">
+        <div className="flex-1 bg-slate-950/60 backdrop-blur-sm border border-slate-700/50 rounded-xl p-2 flex flex-col gap-1 justify-center min-w-[120px]">
             <div>
                 <h3 className="text-[9px] font-bold text-slate-500 uppercase tracking-widest border-b border-slate-700 pb-0.5 mb-1">Attributes</h3>
                 <div className="space-y-1">
@@ -603,20 +575,18 @@ const MainGameScreen: React.FC<MainGameScreenProps> = ({ player, onExitToProfile
                     <StatRow label="Crit" value={`${player.currentStats.critRate}%`} buff={buffs.critRate} />
                     <StatRow label="Vamp" value={`${player.currentStats.lifesteal}%`} color="text-pink-400" buff={buffs.lifesteal} />
                     <StatRow label="Eva" value={`${player.currentStats.evasion}%`} buff={buffs.evasion} />
+                    <StatRow label="ASPD" value={`${player.currentStats.attackSpeed}%`} color="text-yellow-400" />
+                    <StatRow label="CSPD" value={`${player.currentStats.castSpeed}%`} color="text-indigo-400" />
                 </div>
             </div>
         </div>
       </div>
 
-      {/* BOTTOM: Bag & Actions */}
       <div className="w-full flex flex-col gap-2 flex-shrink-0">
-          {/* Bag */}
-          <div className={`bg-slate-800 border-2 rounded-xl p-2 shadow-xl transition-colors duration-300 ${bagMode === 'sell' ? 'border-red-500 shadow-red-900/20' : bagMode === 'disenchant' ? 'border-cyan-500 shadow-cyan-900/20' : 'border-slate-700'}`}>
+          <div className={`bg-slate-900/80 backdrop-blur-sm border-2 rounded-xl p-2 shadow-xl transition-colors duration-300 ${bagMode === 'sell' ? 'border-red-500 shadow-red-900/20' : bagMode === 'disenchant' ? 'border-cyan-500 shadow-cyan-900/20' : 'border-slate-700/50'}`}>
               <div className="flex justify-between items-center mb-1 px-1">
                   <div className="flex items-center gap-2">
                       <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Bag</h3>
-                      
-                      {/* Sell Toggle */}
                       <button 
                         onClick={() => setBagMode(prev => prev === 'sell' ? 'equip' : 'sell')}
                         className={`text-[9px] px-2 py-0.5 rounded-full font-bold border transition-all ${
@@ -627,8 +597,6 @@ const MainGameScreen: React.FC<MainGameScreenProps> = ({ player, onExitToProfile
                       >
                           Sell
                       </button>
-
-                      {/* Disenchant Toggle */}
                        <button 
                         onClick={() => setBagMode(prev => prev === 'disenchant' ? 'equip' : 'disenchant')}
                         className={`text-[9px] px-2 py-0.5 rounded-full font-bold border transition-all ${
@@ -656,29 +624,34 @@ const MainGameScreen: React.FC<MainGameScreenProps> = ({ player, onExitToProfile
               </div>
           </div>
 
-          {/* Action Buttons */}
-          <div className="grid grid-cols-2 gap-2 w-full">
+          <div className="grid grid-cols-3 gap-2 w-full">
               <button
                 onClick={onEnterShop}
-                className="flex items-center justify-center w-full px-1 py-3 bg-purple-700 text-white font-bold text-xs rounded shadow-md hover:bg-purple-600 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="flex items-center justify-center w-full px-1 py-3 bg-purple-700/90 text-white font-bold text-xs rounded shadow-md hover:bg-purple-600 transition-colors backdrop-blur-sm"
               >
                 Shop
               </button>
               <button
                 onClick={onEnterAchievements}
-                className="flex items-center justify-center w-full px-1 py-3 bg-cyan-700 text-white font-bold text-xs rounded shadow-md hover:bg-cyan-600 transition-colors focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                className="flex items-center justify-center w-full px-1 py-3 bg-cyan-700/90 text-white font-bold text-xs rounded shadow-md hover:bg-cyan-600 transition-colors backdrop-blur-sm"
               >
                 Quests
               </button>
               <button
+                onClick={onEnterSkills}
+                className="flex items-center justify-center w-full px-1 py-3 bg-indigo-700/90 text-white font-bold text-xs rounded shadow-md hover:bg-indigo-600 transition-colors backdrop-blur-sm"
+              >
+                Skills
+              </button>
+              <button
                 onClick={onEnterStats}
-                className="flex items-center justify-center w-full px-1 py-3 bg-slate-600 text-white font-bold text-xs rounded shadow-md hover:bg-slate-500 transition-colors focus:outline-none focus:ring-2 focus:ring-slate-500"
+                className="flex items-center justify-center w-full px-1 py-3 bg-slate-600/90 text-white font-bold text-xs rounded shadow-md hover:bg-slate-500 transition-colors backdrop-blur-sm"
               >
                 Stats
               </button>
               <button
                 onClick={onEnterSpire}
-                className="flex items-center justify-center w-full px-1 py-3 bg-[#D6721C] text-slate-900 font-bold text-xs rounded shadow-md hover:bg-[#D6721C] transition-colors focus:outline-none focus:ring-2 focus:ring-[#D6721C]"
+                className="col-span-2 flex items-center justify-center w-full px-1 py-3 bg-[#D6721C]/90 text-slate-900 font-bold text-xs rounded shadow-md hover:bg-[#D6721C] transition-colors backdrop-blur-sm"
               >
                 Spire
               </button>

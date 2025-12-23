@@ -1,6 +1,6 @@
 
-import React, { useState, useCallback, useEffect } from 'react';
-import type { GameScreen, Player, PlayerClass, RunState, CombatLog, Equipment, GearSlot, Achievement, Rarity } from './types';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
+import type { GameScreen, Player, PlayerClass, RunState, CombatLog, Equipment, GearSlot, Achievement, Rarity, Skill } from './types';
 import { generateEnemy } from './utils/combat';
 import { generateLoot } from './utils/loot';
 import { generateShopInventory } from './utils/shop';
@@ -16,8 +16,8 @@ import ProfileScreen from './components/screens/ProfileScreen';
 import RunSummaryScreen from './components/screens/RunSummaryScreen';
 import StatsScreen from './components/screens/StatsScreen';
 import NameSelectionScreen from './components/screens/NameSelectionScreen';
-import { GEAR_SLOTS, CLASSES } from './constants';
-import { ITEM_TEMPLATES } from './data/items';
+import SkillTreeScreen from './components/screens/SkillTreeScreen';
+import { GEAR_SLOTS, CLASSES, SKILL_TREES } from './constants';
 
 const PROFILES_STORAGE_KEY = 'eternal_spire_profiles';
 
@@ -78,6 +78,21 @@ const App: React.FC = () => {
                             if (!updatedProfile.inventory) updatedProfile.inventory = [];
                             if (updatedProfile.eternalDust === undefined) updatedProfile.eternalDust = 0;
                             if (updatedProfile.totalLifetimeDust === undefined) updatedProfile.totalLifetimeDust = 0;
+                            
+                            // Skill System Migration
+                            if (updatedProfile.skillPoints === undefined) updatedProfile.skillPoints = Math.max(0, (updatedProfile.level || 1) - 1);
+                            
+                            if (updatedProfile.skills === undefined) {
+                                updatedProfile.skills = {};
+                                if (updatedProfile.unlockedSkills) {
+                                    updatedProfile.unlockedSkills.forEach((id: string) => {
+                                        updatedProfile.skills[id] = 1;
+                                    });
+                                }
+                            }
+
+                            if (updatedProfile.currentEnergy === undefined) updatedProfile.currentEnergy = 0;
+                            if (updatedProfile.currentMana === undefined) updatedProfile.currentMana = 0;
 
                             if (!updatedProfile.name && updatedProfile.classInfo && updatedProfile.classInfo.name) {
                                 updatedProfile.name = updatedProfile.classInfo.name;
@@ -86,51 +101,21 @@ const App: React.FC = () => {
                             if (!updatedProfile.shopRefreshes) {
                                 updatedProfile.shopRefreshes = { level: updatedProfile.level || 1, count: 0 };
                             }
-                            if (updatedProfile.shopRefreshesUsed !== undefined) {
-                                if (updatedProfile.shopRefreshes.level === updatedProfile.level) {
-                                    updatedProfile.shopRefreshes.count = updatedProfile.shopRefreshesUsed;
-                                }
-                                delete updatedProfile.shopRefreshesUsed;
-                            }
 
                             if (!updatedProfile.baseStats) updatedProfile.baseStats = {};
                             if (!updatedProfile.currentStats) updatedProfile.currentStats = {};
                             
-                            if (updatedProfile.baseStats.blockChance === undefined) updatedProfile.baseStats.blockChance = 0;
-                            if (updatedProfile.baseStats.lifesteal === undefined) updatedProfile.baseStats.lifesteal = 0;
-                            if (updatedProfile.currentStats.blockChance === undefined) updatedProfile.currentStats.blockChance = 0;
-                            if (updatedProfile.currentStats.lifesteal === undefined) updatedProfile.currentStats.lifesteal = 0;
+                            // Initialize new stats if missing
+                            if (updatedProfile.baseStats.maxEnergy === undefined) updatedProfile.baseStats.maxEnergy = 0;
+                            if (updatedProfile.baseStats.maxMana === undefined) updatedProfile.baseStats.maxMana = 0;
 
-                            // Migration logic for 2H weapons and stats
-                            if (updatedProfile.equipment && updatedProfile.equipment.Weapon) {
-                                const oldWeapon = updatedProfile.equipment.Weapon;
-                                let isTwoHanded = false;
-                                if (oldWeapon.weaponType && ['Bow', 'Staff', 'Hammer'].includes(oldWeapon.weaponType)) {
-                                     if (oldWeapon.name && (oldWeapon.name.includes("Great") || oldWeapon.name.includes("Maul") || oldWeapon.name.includes("Bow") || oldWeapon.name.includes("Staff"))) {
-                                         isTwoHanded = true;
-                                     }
-                                }
-                                updatedProfile.equipment.MainHand = {
-                                    ...oldWeapon,
-                                    slot: 'MainHand',
-                                    isTwoHanded: isTwoHanded
-                                };
-                                delete updatedProfile.equipment.Weapon;
-                            }
-
-                            if (updatedProfile.equipment) {
-                                GEAR_SLOTS.forEach(slot => {
-                                    if (updatedProfile.equipment[slot] && updatedProfile.equipment[slot].itemLevel === undefined) {
-                                        updatedProfile.equipment[slot].itemLevel = updatedProfile.level || 1;
-                                    }
-                                });
-                            }
-                            
-                            // NEW: Sync Class Definitions (Enables Mage Shields / Updates for existing saves)
                             if (updatedProfile.classInfo && updatedProfile.classInfo.name) {
                                 const classDef = CLASSES.find(c => c.name === updatedProfile.classInfo.name);
                                 if (classDef) {
                                     updatedProfile.classInfo.allowedWeaponTypes = classDef.allowedWeaponTypes;
+                                    updatedProfile.classInfo.baseStats = classDef.baseStats;
+                                    updatedProfile.baseStats.maxEnergy = classDef.baseStats.maxEnergy;
+                                    updatedProfile.baseStats.maxMana = classDef.baseStats.maxMana;
                                 }
                             }
 
@@ -223,11 +208,11 @@ const App: React.FC = () => {
     let startingWeapon: Equipment | null = null;
 
     if (selectedClass.name === 'Warrior') {
-        startingWeapon = { name: 'Dusty Sword', slot: 'MainHand', icon: `${ICON_BASE}/broadsword.svg${COLOR_PARAM}`, stats: { str: 1, blockChance: 5 }, rarity: 'Common', itemLevel: 1, weaponType: 'Sword', isTwoHanded: false };
+        startingWeapon = { name: 'Dusty Sword', slot: 'MainHand', icon: `${ICON_BASE}/broadsword.svg${COLOR_PARAM}`, stats: { str: 1, attackSpeed: 2 }, rarity: 'Common', itemLevel: 1, weaponType: 'Sword', isTwoHanded: false };
     } else if (selectedClass.name === 'Rogue') {
-        startingWeapon = { name: 'Rusty Dagger', slot: 'MainHand', icon: `${ICON_BASE}/plain-dagger.svg${COLOR_PARAM}`, stats: { dex: 1, critRate: 2 }, rarity: 'Common', itemLevel: 1, weaponType: 'Dagger', isTwoHanded: false };
+        startingWeapon = { name: 'Rusty Dagger', slot: 'MainHand', icon: `${ICON_BASE}/plain-dagger.svg${COLOR_PARAM}`, stats: { dex: 1, attackSpeed: 4 }, rarity: 'Common', itemLevel: 1, weaponType: 'Dagger', isTwoHanded: false };
     } else if (selectedClass.name === 'Mage') {
-        startingWeapon = { name: 'Rusty Staff', slot: 'MainHand', icon: `${ICON_BASE}/wizard-staff.svg${COLOR_PARAM}`, stats: { int: 1, lifesteal: 2 }, rarity: 'Common', itemLevel: 1, weaponType: 'Staff', isTwoHanded: true };
+        startingWeapon = { name: 'Rusty Staff', slot: 'MainHand', icon: `${ICON_BASE}/wizard-staff.svg${COLOR_PARAM}`, stats: { int: 1, castSpeed: 2 }, rarity: 'Common', itemLevel: 1, weaponType: 'Staff', isTwoHanded: true };
     }
     
     if (startingWeapon) {
@@ -244,6 +229,10 @@ const App: React.FC = () => {
       currentStats: { ...baseStats },
       accountBuffs: {},
       currentHp: baseStats.maxHp,
+      currentEnergy: baseStats.maxEnergy,
+      currentMana: baseStats.maxMana,
+      skillPoints: 0,
+      skills: {},
       eternalShards: 0,
       eternalDust: 0,
       potionCount: 1,
@@ -265,6 +254,8 @@ const App: React.FC = () => {
     
     const finalPlayer = recalculatePlayerStats(initialPlayer);
     finalPlayer.currentHp = finalPlayer.currentStats.maxHp;
+    finalPlayer.currentEnergy = finalPlayer.currentStats.maxEnergy;
+    finalPlayer.currentMana = finalPlayer.currentStats.maxMana;
     
     finalPlayer.shopInventory = generateShopInventory(finalPlayer);
 
@@ -283,6 +274,7 @@ const App: React.FC = () => {
       while (updatedPlayer.xp >= updatedPlayer.xpToNextLevel) {
           updatedPlayer.xp -= updatedPlayer.xpToNextLevel;
           updatedPlayer.level += 1;
+          updatedPlayer.skillPoints += 1; // Grant Skill Point
           updatedPlayer.xpToNextLevel = Math.floor(updatedPlayer.xpToNextLevel * 1.5);
           updatedPlayer.baseStats.maxHp += 10;
           updatedPlayer.baseStats.str += 1;
@@ -309,6 +301,8 @@ const App: React.FC = () => {
     updateCurrentPlayer(player => {
         let updatedPlayer = { ...player };
         updatedPlayer.currentHp = updatedPlayer.currentStats.maxHp;
+        updatedPlayer.currentEnergy = updatedPlayer.currentStats.maxEnergy;
+        updatedPlayer.currentMana = updatedPlayer.currentStats.maxMana;
         return updatedPlayer;
     });
     setRunState(null);
@@ -346,12 +340,15 @@ const App: React.FC = () => {
       runLevel: 1,
       runXp: 0,
       runXpToNextLevel: 50,
-      playerCurrentHpInRun: activePlayer.currentStats.maxHp,
+      playerCurrentHpInRun: activePlayer.currentHp,
+      playerCurrentEnergyInRun: activePlayer.currentEnergy,
+      playerCurrentManaInRun: activePlayer.currentMana,
       currentEnemy: initialEnemy,
-      pendingLoot: [], // Init empty array
+      pendingLoot: [], 
       enemiesKilled: 0,
       shardsEarned: 0,
       isAutoBattling: false,
+      skillCooldowns: {},
       pendingLevelUpHeal: false,
     });
     setCombatLogs([]);
@@ -389,174 +386,276 @@ const App: React.FC = () => {
             ...prevRunState,
             floor: targetFloor,
             currentEnemy: nextEnemy,
-            pendingLoot: [], // Reset to empty array
+            pendingLoot: [], 
             isAutoBattling: false, 
             pendingLevelUpHeal: false,
         };
     });
   }, [updateCurrentPlayer, updateAchievementProgress]);
 
+  // NEW: Process Victory - Returns updated RunState to ensure correct state application
+  const processEnemyDefeated = useCallback((targetRunState: RunState): RunState => {
+    const activePlayer = activeProfileIndex !== null ? profiles[activeProfileIndex] : null;
+    if (!activePlayer) return targetRunState;
+
+    let nextRunState = { ...targetRunState };
+    let logs: { message: string, color: CombatLog['color'] }[] = [];
+
+    logs.push({ message: `You have defeated the ${nextRunState.currentEnemy.name}!`, color: 'text-[#D6721C]' });
+    nextRunState.enemiesKilled += 1;
+    
+    const loot = generateLoot(nextRunState.floor, activePlayer.level);
+    if (nextRunState.currentEnemy.isElite && Math.random() < 0.5) loot.shards += Math.floor(Math.random() * 10) + 5;
+    
+    if (loot.equipment.length > 0) {
+        nextRunState.pendingLoot = loot.equipment;
+        logs.push({ message: `The enemy dropped ${loot.equipment.length} item(s)!`, color: 'text-[#D6721C]' });
+    }
+
+    let nextPlayer = { ...activePlayer };
+    nextPlayer.totalEnemiesKilled = (nextPlayer.totalEnemiesKilled || 0) + 1;
+    nextPlayer = updateAchievementProgress(nextPlayer, nextRunState, 'slay', nextRunState.currentEnemy.id);
+
+    const xpGained = nextRunState.currentEnemy.xpReward;
+    nextRunState.runXp += xpGained; 
+    nextPlayer.xp += xpGained;
+    nextPlayer.totalAccumulatedXp = (nextPlayer.totalAccumulatedXp || 0) + xpGained;
+    logs.push({ message: `You gained ${xpGained} XP.`, color: 'text-[#D6721C]' });
+
+    nextPlayer = handleAccountLevelUp(nextPlayer); 
+
+    if (nextRunState.runXp >= nextRunState.runXpToNextLevel) {
+        nextRunState.runXp -= nextRunState.runXpToNextLevel;
+        nextRunState.runLevel += 1;
+        nextRunState.runXpToNextLevel = Math.floor(nextRunState.runXpToNextLevel * 1.8);
+        nextRunState.pendingLevelUpHeal = true;
+        logs.push({ message: `You leveled up to Run Level ${nextRunState.runLevel}!`, color: 'text-[#D6721C]' });
+    }
+
+    if (loot.shards > 0) {
+        nextPlayer.eternalShards += loot.shards;
+        nextPlayer.totalLifetimeShards = (nextPlayer.totalLifetimeShards || 0) + loot.shards;
+        nextRunState.shardsEarned += loot.shards;
+        logs.push({ message: `The enemy dropped ${loot.shards} Eternal Shards.`, color: 'text-purple-400' });
+    }
+    if (loot.potions > 0) {
+        const potionsGained = Math.min(loot.potions, 5 - nextPlayer.potionCount);
+        if (potionsGained > 0) {
+            nextPlayer.potionCount += potionsGained;
+            logs.push({ message: `You found a Health Potion! You now have ${nextPlayer.potionCount}.`, color: 'text-[#D6721C]' });
+        }
+    }
+
+    updateCurrentPlayer(() => nextPlayer);
+    setCombatLogs(prev => [...prev, ...logs.map(l => ({...l, id: Date.now() + Math.random() * 100}))]);
+    
+    if (nextRunState.pendingLoot.length === 0) {
+        if (nextRunState.pendingLevelUpHeal) {
+             nextPlayer.currentHp = nextPlayer.currentStats.maxHp;
+             nextRunState.playerCurrentHpInRun = nextPlayer.currentStats.maxHp;
+             nextRunState.pendingLevelUpHeal = false;
+             updateCurrentPlayer(() => nextPlayer);
+        }
+        const floorToAdvance = nextRunState.floor + 1;
+        const playerLvl = nextPlayer.level;
+        setTimeout(() => advanceToNextFloor(floorToAdvance, playerLvl), 1000);
+    }
+    
+    return nextRunState;
+  }, [activeProfileIndex, profiles, updateAchievementProgress, handleAccountLevelUp, updateCurrentPlayer, advanceToNextFloor]);
+
+  // Manual skill use logic - using functional state updates and returning process victory result
+  const handleUseSkill = useCallback((skillId: string) => {
+    const activePlayer = activeProfileIndex !== null ? profiles[activeProfileIndex] : null;
+    if (!activePlayer || !runState || runState.pendingLoot.length > 0 || runState.playerCurrentHpInRun <= 0) return;
+
+    const classSkills = SKILL_TREES[activePlayer.classInfo.name] || [];
+    const skill = classSkills.find(s => s.id === skillId);
+    if (!skill || skill.type !== 'active') return;
+
+    const currentLvl = activePlayer.skills[skillId] || 0;
+    if (currentLvl <= 0) return;
+
+    if (runState.skillCooldowns[skillId] > 0) return;
+
+    const canAfford = activePlayer.classInfo.name === 'Mage' 
+        ? runState.playerCurrentManaInRun >= skill.cost 
+        : runState.playerCurrentEnergyInRun >= skill.cost;
+    
+    if (!canAfford) {
+        addLog(`Not enough ${activePlayer.classInfo.name === 'Mage' ? 'Mana' : 'Energy'} for ${skill.name}!`, 'text-red-400');
+        return;
+    }
+
+    let logs: { message: string, color: CombatLog['color'] }[] = [];
+    logs.push({ message: `[SKILL] ${activePlayer.name} used ${skill.name}!`, color: 'text-yellow-400' });
+
+    let playerDamageMultiplier = 1;
+    let bonusDamage = 0;
+    let ignoreDefense = false;
+    const level = activePlayer.skills[skill.id] || 1;
+
+    // Skill Specific Logic
+    if (skill.id === 'w_a1') { bonusDamage = activePlayer.currentStats.str * (1.5 + (level - 1) * 0.2); }
+    if (skill.id === 'w_a2') { playerDamageMultiplier = 2.5 + (level - 1) * 0.5; }
+    if (skill.id === 'w_a3') { playerDamageMultiplier = 6; }
+    if (skill.id === 'r_a1') { playerDamageMultiplier = 2 + (level - 1) * 0.3; logs.push({ message: `A flurry of strikes hits twice!`, color: 'text-yellow-400' }); }
+    if (skill.id === 'r_a2') { bonusDamage = activePlayer.currentStats.dex * (2 + (level - 1) * 0.4); }
+    if (skill.id === 'r_a3') { playerDamageMultiplier = 7; }
+    if (skill.id === 'm_a1') { bonusDamage = activePlayer.currentStats.int * (2 + (level - 1) * 0.3); }
+    if (skill.id === 'm_a2') { bonusDamage = activePlayer.currentStats.int * (2 + (level - 1) * 0.2); ignoreDefense = true; }
+    if (skill.id === 'm_a3') { bonusDamage = activePlayer.currentStats.int * 8; }
+
+    const playerAttackStat = Math.max(activePlayer.currentStats.str, activePlayer.currentStats.dex, activePlayer.currentStats.int);
+    
+    setRunState(prev => {
+        if (!prev || prev.currentEnemy.stats.hp <= 0) return prev;
+        
+        const effectiveDefense = ignoreDefense ? 0 : prev.currentEnemy.stats.defense;
+        let skillDamage = Math.max(1, (playerAttackStat * playerDamageMultiplier) + bonusDamage - effectiveDefense);
+        const damageVariance = 0.9 + Math.random() * 0.2; 
+        skillDamage = Math.floor(skillDamage * damageVariance);
+        
+        const playerCrit = Math.random() * 100 < activePlayer.currentStats.critRate;
+        if (playerCrit) skillDamage = Math.floor(skillDamage * 2);
+
+        logs.push({ message: `Your ${skill.name} deals ${skillDamage} damage${playerCrit ? ' (CRIT!)' : ''}.`, color: playerCrit ? 'text-green-400' : 'text-slate-200' });
+
+        let newState = { 
+            ...prev, 
+            currentEnemy: { ...prev.currentEnemy, stats: { ...prev.currentEnemy.stats, hp: Math.max(0, prev.currentEnemy.stats.hp - skillDamage) } },
+            skillCooldowns: { ...prev.skillCooldowns, [skillId]: skill.cooldown || 10 }
+        };
+
+        if (activePlayer.classInfo.name === 'Mage') {
+            newState.playerCurrentManaInRun -= skill.cost;
+        } else {
+            newState.playerCurrentEnergyInRun -= skill.cost;
+        }
+
+        setCombatLogs(prevLogs => [...prevLogs, ...logs.map(log => ({...log, id: Date.now() + Math.random() * 100}))]);
+
+        if (newState.currentEnemy.stats.hp <= 0) {
+            // CRITICAL: Call victory logic and RETURN the state it produces
+            return processEnemyDefeated(newState);
+        }
+
+        return newState;
+    });
+  }, [activeProfileIndex, profiles, runState, processEnemyDefeated]);
+
   const handleAttack = useCallback(() => {
     const activePlayer = activeProfileIndex !== null ? profiles[activeProfileIndex] : null;
     if (!activePlayer || !runState || runState.pendingLoot.length > 0) return;
   
-    let newRunState = { 
-        ...runState, 
-        currentEnemy: { 
-            ...runState.currentEnemy, 
-            stats: { ...runState.currentEnemy.stats } 
-        } 
-    };
-    
     let logs: { message: string, color: CombatLog['color'] }[] = [];
-    let playerDefeated = false;
-    let lootDropped = false;
   
-    // PLAYER ATTACK LOGIC (Same as before)
-    if (Math.random() * 100 < newRunState.currentEnemy.stats.evasion) {
-        logs.push({ message: `The ${newRunState.currentEnemy.name} dodged your attack!`, color: 'text-red-400' });
-    } else {
-        const playerCrit = Math.random() * 100 < activePlayer.currentStats.critRate;
-        const playerAttackStat = Math.max(activePlayer.currentStats.str, activePlayer.currentStats.dex, activePlayer.currentStats.int);
+    setRunState(prev => {
+        if (!prev || prev.currentEnemy.stats.hp <= 0 || prev.playerCurrentHpInRun <= 0) return prev;
+
+        const nextRunState = { 
+            ...prev, 
+            currentEnemy: { ...prev.currentEnemy, stats: { ...prev.currentEnemy.stats } } 
+        };
         
-        let playerDamage = Math.max(1, playerAttackStat - newRunState.currentEnemy.stats.defense);
-        const damageVariance = 0.85 + Math.random() * 0.3; 
-        playerDamage = Math.floor(playerDamage * damageVariance);
-        if (playerCrit) playerDamage = Math.floor(playerDamage * 2);
-        playerDamage = Math.max(1, playerDamage);
-        
-        newRunState.currentEnemy.stats.hp = Math.max(0, newRunState.currentEnemy.stats.hp - playerDamage);
-        logs.push({ message: `You hit the ${newRunState.currentEnemy.name} for ${playerDamage} damage${playerCrit ? ' (CRIT!)' : ''}.`, color: playerCrit ? 'text-green-400' : 'text-slate-200' });
-        
-        if (activePlayer.currentStats.lifesteal > 0 && playerDamage > 0 && newRunState.playerCurrentHpInRun < activePlayer.currentStats.maxHp) {
-            const healAmount = Math.max(1, Math.floor(playerDamage * (activePlayer.currentStats.lifesteal / 100)));
-            newRunState.playerCurrentHpInRun = Math.min(activePlayer.currentStats.maxHp, newRunState.playerCurrentHpInRun + healAmount);
-            logs.push({ message: `You drained ${healAmount} HP from the enemy.`, color: 'text-pink-400' });
+        // PLAYER ATTACK LOGIC (Standard Auto Attack)
+        if (Math.random() * 100 < nextRunState.currentEnemy.stats.evasion) {
+            logs.push({ message: `The ${nextRunState.currentEnemy.name} dodged your attack!`, color: 'text-red-400' });
+        } else {
+            const playerCrit = Math.random() * 100 < activePlayer.currentStats.critRate;
+            const playerAttackStat = Math.max(activePlayer.currentStats.str, activePlayer.currentStats.dex, activePlayer.currentStats.int);
+            
+            let playerDamage = Math.max(1, playerAttackStat - nextRunState.currentEnemy.stats.defense);
+            const damageVariance = 0.85 + Math.random() * 0.3; 
+            playerDamage = Math.floor(playerDamage * damageVariance);
+            if (playerCrit) playerDamage = Math.floor(playerDamage * 2);
+            playerDamage = Math.max(1, playerDamage);
+            
+            nextRunState.currentEnemy.stats.hp = Math.max(0, nextRunState.currentEnemy.stats.hp - playerDamage);
+            logs.push({ message: `You hit the ${nextRunState.currentEnemy.name} for ${playerDamage} damage${playerCrit ? ' (CRIT!)' : ''}.`, color: playerCrit ? 'text-green-400' : 'text-slate-200' });
+            
+            if (activePlayer.currentStats.lifesteal > 0 && playerDamage > 0 && nextRunState.playerCurrentHpInRun < activePlayer.currentStats.maxHp) {
+                const healAmount = Math.max(1, Math.floor(playerDamage * (activePlayer.currentStats.lifesteal / 100)));
+                nextRunState.playerCurrentHpInRun = Math.min(activePlayer.currentStats.maxHp, nextRunState.playerCurrentHpInRun + healAmount);
+                logs.push({ message: `You drained ${healAmount} HP from the enemy.`, color: 'text-pink-400' });
+            }
         }
-    }
 
-    if (newRunState.currentEnemy.stats.hp <= 0) {
-      logs.push({ message: `You have defeated the ${newRunState.currentEnemy.name}!`, color: 'text-[#D6721C]' });
-      newRunState.enemiesKilled += 1;
-      
-      let xpGained = newRunState.currentEnemy.xpReward;
-      const loot = generateLoot(newRunState.floor, activePlayer.level);
-      
-      if (newRunState.currentEnemy.isElite && Math.random() < 0.5) {
-          loot.shards += Math.floor(Math.random() * 10) + 5;
-      }
-      
-      // Handle Multiple Drops
-      if (loot.equipment.length > 0) {
-          lootDropped = true;
-          newRunState.pendingLoot = loot.equipment;
-          logs.push({ message: `The enemy dropped ${loot.equipment.length} item(s)!`, color: 'text-[#D6721C]' });
-      }
+        // Resource Regen
+        if (activePlayer.classInfo.name === 'Mage') {
+            nextRunState.playerCurrentManaInRun = Math.min(activePlayer.currentStats.maxMana, nextRunState.playerCurrentManaInRun + 5);
+        } else {
+            nextRunState.playerCurrentEnergyInRun = Math.min(activePlayer.currentStats.maxEnergy, nextRunState.playerCurrentEnergyInRun + 10);
+        }
 
-      let nextPlayer = { ...activePlayer };
-      nextPlayer.totalEnemiesKilled = (nextPlayer.totalEnemiesKilled || 0) + 1;
-      nextPlayer = updateAchievementProgress(nextPlayer, newRunState, 'slay', newRunState.currentEnemy.id);
+        if (nextRunState.currentEnemy.stats.hp <= 0) {
+            // CRITICAL: Call victory logic and RETURN the state it produces
+            return processEnemyDefeated(nextRunState);
+        } else { 
+            // ENEMY ATTACK LOGIC
+            if (Math.random() * 100 < activePlayer.currentStats.evasion) {
+                logs.push({ message: `You dodged the ${nextRunState.currentEnemy.name}'s attack!`, color: 'text-red-400' });
+            } else {
+                let blocked = false;
+                if (Math.random() * 100 < activePlayer.currentStats.blockChance) {
+                    blocked = true;
+                }
 
-      newRunState.runXp += xpGained; 
-      nextPlayer.xp += xpGained;
-      nextPlayer.totalAccumulatedXp = (nextPlayer.totalAccumulatedXp || 0) + xpGained;
-      logs.push({ message: `You gained ${xpGained} XP.`, color: 'text-[#D6721C]' });
+                const playerDefense = activePlayer.currentStats.defense;
+                let enemyDamage = Math.max(1, nextRunState.currentEnemy.stats.attack - playerDefense);
+                const enemyDamageVariance = 0.85 + Math.random() * 0.3;
+                enemyDamage = Math.floor(enemyDamage * enemyDamageVariance);
+                if (blocked) enemyDamage = Math.max(1, Math.floor(enemyDamage * 0.5));
+                enemyDamage = Math.max(1, enemyDamage);
+                
+                nextRunState.playerCurrentHpInRun = Math.max(0, nextRunState.playerCurrentHpInRun - enemyDamage);
+                
+                if (blocked) {
+                    logs.push({ message: `You BLOCKED! Took reduced damage (${enemyDamage}).`, color: 'text-cyan-400' });
+                } else {
+                    logs.push({ message: `${nextRunState.currentEnemy.name} hits you for ${enemyDamage} damage.`, color: 'text-slate-200' });
+                }
+            }
+        
+            if (nextRunState.playerCurrentHpInRun <= 0) {
+                updateCurrentPlayer(player => ({ ...player, totalDeaths: (player.totalDeaths || 0) + 1 }));
+                logs.push({ message: `You have been defeated...`, color: 'text-[#D6721C]' });
+                setTimeout(() => setGameScreen('run_summary'), 2000);
+            }
+        }
+        
+        setCombatLogs(prevLogs => [...prevLogs, ...logs.map(log => ({...log, id: Date.now() + Math.random() * 100}))]);
+        return nextRunState;
+    });
 
-      const oldMaxHpAccount = nextPlayer.currentStats.maxHp;
-      nextPlayer = handleAccountLevelUp(nextPlayer); 
-      const newMaxHpAccount = nextPlayer.currentStats.maxHp;
-      const hpDiffAccount = newMaxHpAccount - oldMaxHpAccount;
+  }, [activeProfileIndex, profiles, runState, processEnemyDefeated, updateCurrentPlayer]);
 
-      if (nextPlayer.level > activePlayer.level) {
-          logs.push({ message: `Account Level Up! You are now level ${nextPlayer.level}.`, color: 'text-[#D6721C]' });
-          if (Math.floor(nextPlayer.level / 5) > Math.floor(activePlayer.level / 5)) {
-               logs.push({ message: `Shop New Arrivals! Stock refreshed.`, color: 'text-purple-400' });
-          }
-      }
-      if (hpDiffAccount > 0) {
-          newRunState.playerCurrentHpInRun += hpDiffAccount;
-          logs.push({ message: `Max HP increased by ${hpDiffAccount} from Account Level Up.`, color: 'text-[#D6721C]' });
-      }
+  // Cooldown Ticker Loop
+  // Optimized: Cooldown only decreases when in active combat AND in Auto-Fight mode
+  useEffect(() => {
+    if (!runState) return;
 
-      if (newRunState.runXp >= newRunState.runXpToNextLevel) {
-          newRunState.runXp -= newRunState.runXpToNextLevel;
-          newRunState.runLevel += 1;
-          newRunState.runXpToNextLevel = Math.floor(newRunState.runXpToNextLevel * 1.8);
-          // DEFERRED HEAL: Don't heal immediately. Set flag.
-          newRunState.pendingLevelUpHeal = true;
-          logs.push({ message: `You leveled up to Run Level ${newRunState.runLevel}!`, color: 'text-[#D6721C]' });
-      }
+    const cooldownTimer = setInterval(() => {
+        setRunState(prev => {
+            // Strict condition: only tick down if in run AND auto-fighting AND enemy is alive AND player is alive AND no loot pending
+            if (!prev || !prev.isAutoBattling || prev.pendingLoot.length > 0 || prev.playerCurrentHpInRun <= 0 || prev.currentEnemy.stats.hp <= 0) {
+                return prev;
+            }
+            
+            const newCooldowns = { ...prev.skillCooldowns };
+            let changed = false;
+            Object.keys(newCooldowns).forEach(id => {
+                if (newCooldowns[id] > 0) {
+                    newCooldowns[id] = Math.max(0, newCooldowns[id] - 1);
+                    changed = true;
+                }
+            });
+            return changed ? { ...prev, skillCooldowns: newCooldowns } : prev;
+        });
+    }, 1000);
 
-      if (loot.shards > 0) {
-          nextPlayer.eternalShards += loot.shards;
-          nextPlayer.totalLifetimeShards = (nextPlayer.totalLifetimeShards || 0) + loot.shards;
-          newRunState.shardsEarned += loot.shards;
-          logs.push({ message: `The enemy dropped ${loot.shards} Eternal Shards.`, color: 'text-purple-400' });
-      }
-      if (loot.potions > 0) {
-          const potionsGained = Math.min(loot.potions, 5 - nextPlayer.potionCount);
-          if (potionsGained > 0) {
-              nextPlayer.potionCount += potionsGained;
-              logs.push({ message: `You found a Health Potion! You now have ${nextPlayer.potionCount}.`, color: 'text-[#D6721C]' });
-          }
-      }
-
-      updateCurrentPlayer(() => nextPlayer);
-      
-      if (!lootDropped) {
-          // Automatic progression logic - handle deferred heal here if no loot
-          if (newRunState.pendingLevelUpHeal) {
-             nextPlayer.currentHp = nextPlayer.currentStats.maxHp;
-             newRunState.playerCurrentHpInRun = nextPlayer.currentStats.maxHp;
-             newRunState.pendingLevelUpHeal = false;
-             logs.push({ message: `HP Restored!`, color: 'text-green-400' });
-             updateCurrentPlayer(() => nextPlayer);
-          }
-          const nextFloor = newRunState.floor + 1;
-          const playerLevel = nextPlayer.level;
-          setTimeout(() => advanceToNextFloor(nextFloor, playerLevel), 1000);
-      }
-
-    } else { 
-      // ENEMY ATTACK LOGIC (Same as before)
-      if (Math.random() * 100 < activePlayer.currentStats.evasion) {
-          logs.push({ message: `You dodged the ${newRunState.currentEnemy.name}'s attack!`, color: 'text-red-400' });
-      } else {
-          let blocked = false;
-          if (Math.random() * 100 < activePlayer.currentStats.blockChance) {
-              blocked = true;
-          }
-
-          const playerDefense = activePlayer.currentStats.defense;
-          let enemyDamage = Math.max(1, newRunState.currentEnemy.stats.attack - playerDefense);
-          const enemyDamageVariance = 0.85 + Math.random() * 0.3;
-          enemyDamage = Math.floor(enemyDamage * enemyDamageVariance);
-          if (blocked) enemyDamage = Math.max(1, Math.floor(enemyDamage * 0.5));
-          enemyDamage = Math.max(1, enemyDamage);
-          
-          newRunState.playerCurrentHpInRun = Math.max(0, newRunState.playerCurrentHpInRun - enemyDamage);
-          
-          if (blocked) {
-              logs.push({ message: `You BLOCKED! Took reduced damage (${enemyDamage}).`, color: 'text-cyan-400' });
-          } else {
-              logs.push({ message: `${newRunState.currentEnemy.name} hits you for ${enemyDamage} damage.`, color: 'text-slate-200' });
-          }
-      }
-  
-      if (newRunState.playerCurrentHpInRun <= 0) {
-        playerDefeated = true;
-        updateCurrentPlayer(player => ({ ...player, totalDeaths: (player.totalDeaths || 0) + 1 }));
-        logs.push({ message: `You have been defeated...`, color: 'text-[#D6721C]' });
-      }
-    }
-
-    setCombatLogs(prev => [...prev, ...logs.map(log => ({...log, id: Date.now() + Math.random() * logs.indexOf(log)}))]);
-    setRunState(newRunState);
-
-    if (playerDefeated) {
-      setTimeout(() => setGameScreen('run_summary'), 2000);
-    }
-  }, [activeProfileIndex, profiles, runState, advanceToNextFloor, updateAchievementProgress, updateCurrentPlayer, handleAccountLevelUp]);
+    return () => clearInterval(cooldownTimer);
+  }, [!!runState]);
 
   // Auto Combat Loop
   useEffect(() => {
@@ -567,12 +666,21 @@ const App: React.FC = () => {
         return;
     }
 
+    const activePlayer = profiles[activeProfileIndex!];
+    let speedBonus = 0;
+    if (activePlayer) {
+        speedBonus = (activePlayer.currentStats.attackSpeed || 0) + (activePlayer.currentStats.castSpeed || 0);
+    }
+
+    const baseDelay = 1000;
+    const delay = Math.max(200, Math.floor(baseDelay / (1 + speedBonus / 100)));
+
     const timer = setTimeout(() => {
         handleAttack();
-    }, 1000); 
+    }, delay); 
 
     return () => clearTimeout(timer);
-  }, [runState, handleAttack]);
+  }, [runState?.isAutoBattling, handleAttack, activeProfileIndex, profiles]);
 
   const handleToggleAutoCombat = useCallback(() => {
       setRunState(prev => prev ? ({ ...prev, isAutoBattling: !prev.isAutoBattling }) : null);
@@ -587,55 +695,35 @@ const App: React.FC = () => {
     const occupiedSlots = activePlayer.inventory.length + (activePlayer.potionCount > 0 ? 1 : 0);
     const bagFull = occupiedSlots >= 24;
     
-    // Check if this is the last item to decide on, to apply pending heals after
-    const isLastItem = runState.pendingLoot.length === 1;
-    const shouldHeal = runState.pendingLevelUpHeal;
-
     if (action === 'equip') {
         updateCurrentPlayer(player => {
              const canEquipClass = !lootItem.weaponType || player.classInfo.allowedWeaponTypes.includes(lootItem.weaponType);
-             
-             // Base check (ignoring dual wield logic for a moment, just raw class compatibility)
              if (!canEquipClass) return player;
 
-             // Determine the actual slot (allow override if targetSlot is passed)
              let finalSlot = targetSlot || lootItem.slot;
-
-             // Force MainHand if item is TwoHanded (can never be OffHand)
              if (lootItem.isTwoHanded) finalSlot = 'MainHand';
 
-             // Clone item and update its slot property if we are reassigning it (e.g. Sword to OffHand)
              const itemToEquip: Equipment = { ...lootItem, slot: finalSlot };
              
-             // Dual Wield Slot Integrity Checks:
-             // 1. If equipping to OffHand, ensure item isn't 2H (handled above)
-             // 2. If equipping to OffHand, ensure MainHand isn't 2H. If it is, unequip MainHand.
-             // 3. If equipping to MainHand and item is 2H, unequip OffHand.
-
              let updatedPlayer = { ...player };
              const newInventory = [...updatedPlayer.inventory];
              let oldItem: Equipment | undefined;
 
              if (finalSlot === 'OffHand') {
-                 // Check if MainHand is 2H, if so unequip it
                  if (updatedPlayer.equipment.MainHand && updatedPlayer.equipment.MainHand.isTwoHanded) {
                      newInventory.push(updatedPlayer.equipment.MainHand);
                      delete updatedPlayer.equipment.MainHand;
                  }
-                 
                  oldItem = updatedPlayer.equipment.OffHand;
                  updatedPlayer.equipment.OffHand = itemToEquip;
              } else if (finalSlot === 'MainHand') {
-                 // Check if new item is 2H, if so unequip OffHand
                  if (itemToEquip.isTwoHanded && updatedPlayer.equipment.OffHand) {
                      newInventory.push(updatedPlayer.equipment.OffHand);
                      delete updatedPlayer.equipment.OffHand;
                  }
-                 
                  oldItem = updatedPlayer.equipment.MainHand;
                  updatedPlayer.equipment.MainHand = itemToEquip;
              } else {
-                 // Armor slots
                  oldItem = updatedPlayer.equipment[finalSlot];
                  updatedPlayer.equipment[finalSlot] = itemToEquip;
              }
@@ -656,97 +744,67 @@ const App: React.FC = () => {
              updatedPlayer = recalculatePlayerStats(updatedPlayer);
              const maxHpAfter = updatedPlayer.currentStats.maxHp;
              
-             // SCALING / HEALING LOGIC
-             if (isLastItem && shouldHeal) {
-                 updatedPlayer.currentHp = maxHpAfter; // Full heal to NEW max HP
-                 addLog(`HP Restored!`, 'text-green-400');
-             } else if (maxHpAfter !== maxHpBefore && maxHpBefore > 0) {
+             if (maxHpAfter !== maxHpBefore && maxHpBefore > 0) {
                  const hpPercentage = hpBefore / maxHpBefore;
                  updatedPlayer.currentHp = Math.round(maxHpAfter * hpPercentage);
              }
              
-             // Sync Run State HP
              setRunState(prev => prev ? ({...prev, playerCurrentHpInRun: updatedPlayer.currentHp}) : null);
-
              return updatedPlayer;
         });
     } else if (action === 'take') {
         if (bagFull) {
             addLog("Inventory is full! Sold item instead.", 'text-red-400');
             const sellValue = Math.floor((lootItem.cost || 10) * 0.2);
-            updateCurrentPlayer(player => {
-                const updated = {
-                    ...player,
-                    eternalShards: player.eternalShards + sellValue,
-                    totalLifetimeShards: (player.totalLifetimeShards || 0) + sellValue
-                }
-                // Apply deferred heal if needed
-                if (isLastItem && shouldHeal) {
-                    updated.currentHp = updated.currentStats.maxHp;
-                    addLog(`HP Restored!`, 'text-green-400');
-                }
-                if (isLastItem && shouldHeal) {
-                     setRunState(prev => prev ? ({...prev, playerCurrentHpInRun: updated.currentStats.maxHp}) : null);
-                }
-                return updated;
-            });
+            updateCurrentPlayer(player => ({
+                ...player,
+                eternalShards: player.eternalShards + sellValue,
+                totalLifetimeShards: (player.totalLifetimeShards || 0) + sellValue
+            }));
             setRunState(prev => prev ? ({...prev, shardsEarned: prev.shardsEarned + sellValue}) : null);
         } else {
-            updateCurrentPlayer(player => {
-                const updated = {
-                    ...player,
-                    inventory: [...player.inventory, lootItem]
-                };
-                // Apply deferred heal if needed
-                if (isLastItem && shouldHeal) {
-                    updated.currentHp = updated.currentStats.maxHp;
-                    addLog(`HP Restored!`, 'text-green-400');
-                }
-                if (isLastItem && shouldHeal) {
-                     setRunState(prev => prev ? ({...prev, playerCurrentHpInRun: updated.currentStats.maxHp}) : null);
-                }
-                return updated;
-            });
+            updateCurrentPlayer(player => ({
+                ...player,
+                inventory: [...player.inventory, lootItem]
+            }));
             addLog(`You picked up ${lootItem.name}.`, 'text-slate-200');
         }
 
     } else if (action === 'sell') {
         const sellValue = Math.floor((lootItem.cost || 10) * 0.2);
-        updateCurrentPlayer(player => {
-            const updated = {
-                ...player,
-                eternalShards: player.eternalShards + sellValue,
-                totalLifetimeShards: (player.totalLifetimeShards || 0) + sellValue
-            };
-            // Apply deferred heal if needed
-            if (isLastItem && shouldHeal) {
-                updated.currentHp = updated.currentStats.maxHp;
-                addLog(`HP Restored!`, 'text-green-400');
-            }
-            if (isLastItem && shouldHeal) {
-                 setRunState(prev => prev ? ({...prev, playerCurrentHpInRun: updated.currentStats.maxHp}) : null);
-            }
-            return updated;
-        });
+        updateCurrentPlayer(player => ({
+            ...player,
+            eternalShards: player.eternalShards + sellValue,
+            totalLifetimeShards: (player.totalLifetimeShards || 0) + sellValue
+        }));
         setRunState(prev => prev ? ({...prev, shardsEarned: prev.shardsEarned + sellValue}) : null);
         addLog(`You sold ${lootItem.name} for ${sellValue} shards.`, 'text-purple-400');
     }
 
-    // Queue Management
-    const remainingLoot = runState.pendingLoot.slice(1);
-    
-    if (remainingLoot.length > 0) {
-        // Show next item
-        setRunState(prev => prev ? ({ ...prev, pendingLoot: remainingLoot }) : null);
-    } else {
-        // Finished Queue
-        setRunState(prev => prev ? ({ ...prev, pendingLoot: [], pendingLevelUpHeal: false }) : null);
-        advanceToNextFloor(runState.floor + 1, activePlayer.level);
-    }
+    setRunState(prev => {
+        if (!prev) return null;
+        const remainingLoot = prev.pendingLoot.slice(1);
+        const isNowLast = remainingLoot.length === 0;
+        
+        if (isNowLast) {
+            const nextFloor = prev.floor + 1;
+            const pLvl = activePlayer.level;
+            
+            let updatedHp = prev.playerCurrentHpInRun;
+            if (prev.pendingLevelUpHeal) {
+                updatedHp = activePlayer.currentStats.maxHp;
+                addLog(`HP Restored!`, 'text-green-400');
+            }
+
+            setTimeout(() => advanceToNextFloor(nextFloor, pLvl), 1000);
+            return { ...prev, pendingLoot: [], playerCurrentHpInRun: updatedHp, pendingLevelUpHeal: false };
+        }
+        
+        return { ...prev, pendingLoot: remainingLoot };
+    });
 
   }, [runState, advanceToNextFloor, updateCurrentPlayer, activeProfileIndex, profiles]);
 
-  // Equip from Bag
   const handleEquipFromBag = useCallback((inventoryIndex: number) => {
       if (activeProfileIndex === null) return;
       
@@ -756,7 +814,6 @@ const App: React.FC = () => {
           const canEquipClass = !itemToEquip.weaponType || player.classInfo.allowedWeaponTypes.includes(itemToEquip.weaponType);
           if (!canEquipClass) return player; 
           
-          // Logic to check dual wield for bag equip (simplified - defaults to slot)
           if (itemToEquip.slot === 'OffHand') {
               const mainHand = player.equipment.MainHand;
               if (!mainHand || mainHand.isTwoHanded) return player;
@@ -765,10 +822,8 @@ const App: React.FC = () => {
           let updatedPlayer = { ...player };
           let slot = itemToEquip.slot;
 
-          // SMART EQUIP LOGIC: Auto-fill OffHand with 1H weapon if MainHand is full but OffHand is empty
           if (slot === 'MainHand' && !itemToEquip.isTwoHanded) {
               if (updatedPlayer.equipment.MainHand && !updatedPlayer.equipment.OffHand) {
-                  // Ensure current MainHand isn't 2H (which blocks OffHand)
                   if (!updatedPlayer.equipment.MainHand.isTwoHanded) {
                       slot = 'OffHand';
                   }
@@ -815,7 +870,6 @@ const App: React.FC = () => {
       });
   }, [activeProfileIndex, updateCurrentPlayer]);
 
-  // Unequip Item
   const handleUnequip = useCallback((slot: GearSlot) => {
       if (activeProfileIndex === null) return;
 
@@ -844,7 +898,6 @@ const App: React.FC = () => {
       });
   }, [activeProfileIndex, updateCurrentPlayer]);
 
-  // Sell Item
   const handleSellFromBag = useCallback((inventoryIndex: number) => {
       if (activeProfileIndex === null) return;
 
@@ -864,7 +917,6 @@ const App: React.FC = () => {
       });
   }, [activeProfileIndex, updateCurrentPlayer]);
 
-  // Disenchant Item
   const handleDisenchantFromBag = useCallback((inventoryIndex: number) => {
       if (activeProfileIndex === null) return;
 
@@ -897,18 +949,20 @@ const App: React.FC = () => {
     const activePlayer = activeProfileIndex !== null ? profiles[activeProfileIndex] : null;
     if (!activePlayer || !runState || runState.pendingLoot.length > 0 || activePlayer.potionCount <= 0 || runState.playerCurrentHpInRun >= activePlayer.currentStats.maxHp) return;
 
-    let newRunState = { ...runState };
     let logs: { message: string, color: CombatLog['color'] }[] = [];
     const POTION_HEAL_AMOUNT = 50;
 
     updateCurrentPlayer(player => ({ ...player, potionCount: player.potionCount - 1 }));
 
     const healAmount = POTION_HEAL_AMOUNT;
-    newRunState.playerCurrentHpInRun = Math.min(activePlayer.currentStats.maxHp, newRunState.playerCurrentHpInRun + healAmount);
-    logs.push({ message: `You used a Health Potion and restored ${healAmount} HP.`, color: 'text-slate-200' });
-
-    setCombatLogs(prev => [...prev, ...logs.map(log => ({...log, id: Date.now() + Math.random() * logs.indexOf(log)}))]);
-    setRunState(newRunState);
+    setRunState(prev => {
+        if (!prev) return null;
+        const newRunState = { ...prev };
+        newRunState.playerCurrentHpInRun = Math.min(activePlayer.currentStats.maxHp, newRunState.playerCurrentHpInRun + healAmount);
+        logs.push({ message: `You used a Health Potion and restored ${healAmount} HP.`, color: 'text-slate-200' });
+        setCombatLogs(prevLogs => [...prevLogs, ...logs.map(log => ({...log, id: Date.now() + Math.random() * 100}))]);
+        return newRunState;
+    });
   }, [activeProfileIndex, profiles, runState, updateCurrentPlayer]);
   
   const handleFlee = useCallback(() => {
@@ -936,6 +990,35 @@ const App: React.FC = () => {
     setGameScreen('run_summary');
   }, [runState, updateCurrentPlayer]);
 
+  const handleUnlockSkill = useCallback((skillId: string) => {
+    updateCurrentPlayer(player => {
+        const tree = SKILL_TREES[player.classInfo.name] || [];
+        const skill = tree.find(s => s.id === skillId);
+        if (!skill) return player;
+
+        const currentLvl = player.skills[skillId] || 0;
+        if (currentLvl >= skill.maxLevel || player.skillPoints < skill.pointsRequired) return player;
+        
+        // Tier unlock logic
+        if (skill.tier === 2) {
+            const t1Points = tree.filter(s => s.tier === 1).reduce((sum, s) => sum + (player.skills[s.id] || 0), 0);
+            if (t1Points < 5) return player;
+        }
+        if (skill.tier === 3) {
+            const t2Points = tree.filter(s => s.tier === 2).reduce((sum, s) => sum + (player.skills[s.id] || 0), 0);
+            if (t2Points < 3) return player;
+        }
+
+        let updated = {
+            ...player,
+            skillPoints: player.skillPoints - skill.pointsRequired,
+            skills: { ...player.skills, [skillId]: currentLvl + 1 }
+        };
+        
+        return recalculatePlayerStats(updated);
+    });
+  }, [updateCurrentPlayer]);
+
   const handleExitToProfiles = useCallback(() => {
     setActiveProfileIndex(null);
     setRunState(null);
@@ -946,6 +1029,7 @@ const App: React.FC = () => {
   const handleEnterShop = useCallback(() => setGameScreen('shop'), []);
   const handleEnterAchievements = useCallback(() => setGameScreen('achievements'), []);
   const handleEnterStats = useCallback(() => setGameScreen('stats'), []);
+  const handleEnterSkills = useCallback(() => setGameScreen('skills'), []);
   const handleExitSubScreen = useCallback(() => setGameScreen('main_game'), []);
 
   const handleBuyPotion = useCallback(() => {
@@ -1042,6 +1126,7 @@ const App: React.FC = () => {
             onEnterShop={handleEnterShop} 
             onEnterAchievements={handleEnterAchievements} 
             onEnterStats={handleEnterStats} 
+            onEnterSkills={handleEnterSkills}
             onEquipFromBag={handleEquipFromBag} 
             onSellFromBag={handleSellFromBag}
             onDisenchantFromBag={handleDisenchantFromBag}
@@ -1059,6 +1144,7 @@ const App: React.FC = () => {
             onFlee={handleFlee} 
             onLootAction={handleLootDecision} 
             onUsePotion={handleUsePotion} 
+            onUseSkill={handleUseSkill}
           />;
         }
         return null;
@@ -1080,6 +1166,11 @@ const App: React.FC = () => {
       case 'stats':
         if (activePlayer) {
           return <StatsScreen player={activePlayer} onExit={handleExitSubScreen} />;
+        }
+        return null;
+      case 'skills':
+        if (activePlayer) {
+            return <SkillTreeScreen player={activePlayer} onExit={handleExitSubScreen} onUnlockSkill={handleUnlockSkill} />;
         }
         return null;
       default:

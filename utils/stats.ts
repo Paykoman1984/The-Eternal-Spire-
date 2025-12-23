@@ -1,6 +1,6 @@
 
 import type { Player, Stats } from '../types';
-import { GEAR_SLOTS } from '../constants';
+import { GEAR_SLOTS, SKILL_TREES } from '../constants';
 
 /**
  * Calculates percentage-based stat buffs based on account level.
@@ -25,8 +25,7 @@ export function calculateAccountBuffs(level: number): Partial<Record<keyof Stats
 }
 
 /**
- * Recalculates all player stats from base, equipment, and buffs.
- * This is the single source of truth for player stats.
+ * Recalculates all player stats from base, equipment, buffs, and skills.
  */
 export function recalculatePlayerStats(player: Player): Player {
     const updatedPlayer = { ...player };
@@ -39,26 +38,37 @@ export function recalculatePlayerStats(player: Player): Player {
         const item = updatedPlayer.equipment[slot];
         if (item) {
             for (const [stat, value] of Object.entries(item.stats)) {
-                // Safety check: Don't treat itemLevel as a stat if the data is malformed
                 if (stat === 'itemLevel') continue;
-
                 const key = stat as keyof Stats;
-                newStats[key] = (newStats[key] || 0) + value;
+                newStats[key] = (newStats[key] || 0) + (value as number);
             }
         }
     }
 
-    // Add dexterity bonus to evasion (Reduced scaling: previously / 4)
+    // 3. Add stats from Passive Skills
+    const classSkills = SKILL_TREES[updatedPlayer.classInfo.name] || [];
+    Object.entries(updatedPlayer.skills).forEach(([skillId, level]) => {
+        const skill = classSkills.find(s => s.id === skillId);
+        if (skill && skill.type === 'passive' && skill.stats && level > 0) {
+            for (const [stat, value] of Object.entries(skill.stats)) {
+                const key = stat as keyof Stats;
+                // Stat bonus scales with level (e.g. +5 Defense * Level 2 = +10 Defense)
+                newStats[key] = (newStats[key] || 0) + ((value as number) * level);
+            }
+        }
+    });
+
+    // Dexterity bonus to evasion
     newStats.evasion += Math.floor(newStats.dex / 8);
     
-    // 3. Calculate and apply percentage-based account buffs
+    // 4. Calculate and apply percentage-based account buffs
     const accountBuffs = calculateAccountBuffs(updatedPlayer.level);
     updatedPlayer.accountBuffs = accountBuffs;
 
     for (const [stat, percentage] of Object.entries(accountBuffs)) {
         const key = stat as keyof Stats;
         const baseValue = newStats[key];
-        if (baseValue && percentage) {
+        if (baseValue !== undefined && percentage) {
             const bonus = Math.floor(baseValue * (percentage / 100));
             newStats[key] += bonus;
         }
@@ -70,10 +80,10 @@ export function recalculatePlayerStats(player: Player): Player {
     // Assign the final calculated stats
     updatedPlayer.currentStats = newStats;
     
-    // Ensure current HP is not higher than new max HP
+    // Sync current resources
     updatedPlayer.currentHp = Math.min(updatedPlayer.currentHp, updatedPlayer.currentStats.maxHp);
-    if (updatedPlayer.currentHp <= 0 && updatedPlayer.currentStats.maxHp > 0) updatedPlayer.currentHp = 1;
-
+    updatedPlayer.currentEnergy = Math.min(updatedPlayer.currentEnergy || 0, updatedPlayer.currentStats.maxEnergy);
+    updatedPlayer.currentMana = Math.min(updatedPlayer.currentMana || 0, updatedPlayer.currentStats.maxMana);
 
     return updatedPlayer;
 }

@@ -1,6 +1,4 @@
 
-
-
 import React from 'react';
 import { CLASSES } from '../../constants';
 import type { PlayerClass, Stats } from '../../types';
@@ -27,7 +25,7 @@ const StatDisplay: React.FC<{ stats: Stats }> = ({ stats }) => (
 );
 
 const ClassCard: React.FC<{ playerClass: PlayerClass; onSelect: () => void }> = ({ playerClass, onSelect }) => (
-  <div className="bg-slate-800 border-2 border-slate-700 rounded-xl p-2 flex flex-col text-center transform hover:scale-105 hover:border-[#D6721C] transition-all duration-300 shadow-lg h-full">
+  <div className="bg-slate-900/80 backdrop-blur-sm border-2 border-slate-700 rounded-xl p-2 flex flex-col text-center transform hover:scale-105 hover:border-[#D6721C] transition-all duration-300 shadow-lg h-full">
     <div className="flex items-center justify-center mb-1">
       <div className="w-12 h-12 mr-2">
          {playerClass.icon.startsWith('http') ? (
@@ -58,7 +56,7 @@ const ClassSelectionScreen: React.FC<ClassSelectionScreenProps> = ({ onClassSele
           {CLASSES.map((playerClass) => (
             <ClassCard key={playerClass.name} playerClass={playerClass} onSelect={() => onClassSelect(playerClass)} />
           ))}
-          <div className="bg-slate-800/50 border-2 border-dashed border-slate-700 rounded-xl p-3 flex justify-center items-center text-center h-full">
+          <div className="bg-slate-900/40 backdrop-blur-sm border-2 border-dashed border-slate-700 rounded-xl p-3 flex justify-center items-center text-center h-full">
               <p className="text-slate-500 font-bold text-sm">Coming Soon</p>
           </div>
         </div>
